@@ -16,3 +16,11 @@ pub fn b64_decode(b64_str: &str) -> Vec<u8> {
 pub fn b64_encode(bytes: &[u8]) -> String {
     BASE64_STANDARD.encode(bytes)
 }
+
+pub fn xor(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
+    bytes_1
+        .iter()
+        .zip(bytes_2)
+        .map(|(b1, b2)| b1 ^ b2)
+        .collect()
+}
