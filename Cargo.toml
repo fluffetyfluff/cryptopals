@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 base64 = "0.22.1"
 hex = "0.4.3"
+phf = { version = "0.13.1", features = ["macros"] }
