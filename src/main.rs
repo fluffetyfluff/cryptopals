@@ -42,7 +42,7 @@ fn set_1_problem_4() {
     let mut best: String = String::from("no good match");
     let mut best_score = -1.0;
     for line in input.lines() {
-        let (output, score) = one_byte_xor(line.as_bytes());
+        let (output, score) = one_byte_xor(&hex_decode(&line));
         if score > best_score {
             best = output;
             best_score = score;

@@ -1,7 +1,7 @@
 use phf::phf_map;
 
 const ENGLISH_FREQ: phf::Map<u8, f32> = phf_map! {
-    0x0u8  | 0x20u8 => 25.404, // space/null
+             0x20u8 => 25.000, // space/null
     0x41u8 | 0x61u8 =>  8.167, // a
     0x42u8 | 0x62u8 =>  1.492, // b
     0x43u8 | 0x63u8 =>  2.782, // c
@@ -32,7 +32,7 @@ const ENGLISH_FREQ: phf::Map<u8, f32> = phf_map! {
 
 pub fn english_score(str: &str) -> f32 {
     str.bytes()
-        .map(|c| ENGLISH_FREQ.get(&c).copied().unwrap_or(0.0))
+        .map(|c| ENGLISH_FREQ.get(&c).copied().unwrap_or(-10.0))
         .reduce(|acc, e| acc + e)
         .unwrap_or(0.0)
 }
