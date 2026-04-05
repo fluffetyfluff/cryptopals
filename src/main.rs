@@ -31,7 +31,7 @@ fn set_1_problem_3() {
     let input = hex_decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
     let mut best: String = String::from("no good match");
     let mut best_similarity: f32 = -1.0;
-    for byte in 0x61u8..=0x7au8 {
+    for byte in 0x00u8..=0xffu8 {
         let mask = vec![byte; input.len()];
         let output = xor(&input, &mask);
         if let Ok(output_str) = String::from_utf8(output) {
