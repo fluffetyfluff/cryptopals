@@ -24,3 +24,7 @@ pub fn xor(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
         .map(|(b1, b2)| b1 ^ b2)
         .collect()
 }
+
+pub fn repeating_xor(bytes: &[u8], key: &[u8]) -> Vec<u8> {
+    xor(bytes, &key.repeat(bytes.len() / key.len() + 1))
+}

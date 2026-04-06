@@ -32,7 +32,7 @@ const ENGLISH_FREQ: phf::Map<u8, f32> = phf_map! {
 
 pub fn english_score(str: &str) -> f32 {
     str.bytes()
-        .map(|c| ENGLISH_FREQ.get(&c).copied().unwrap_or(-10.0))
+        .map(|c| ENGLISH_FREQ.get(&c).copied().unwrap_or(0.0))
         .reduce(|acc, e| acc + e)
         .unwrap_or(0.0)
 }
