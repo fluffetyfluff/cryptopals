@@ -7,6 +7,7 @@ fn main() {
     set_1_problem_3();
     set_1_problem_4();
     set_1_problem_5();
+    set_1_problem_6();
     println!("all ok");
 }
 
@@ -31,7 +32,7 @@ fn set_1_problem_2() {
 
 fn set_1_problem_3() {
     let input = hex_decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
-    let (output, _) = one_byte_xor(&input);
+    let (output, _, _) = one_byte_xor(&input);
     println!("set 1 problem 3: {0}", output);
 }
 
@@ -40,15 +41,11 @@ fn set_1_problem_4() {
         .unwrap()
         .text()
         .unwrap();
-    let mut best: String = String::from("no good match");
-    let mut best_score = -1.0;
-    for line in input.lines() {
-        let (output, score) = one_byte_xor(&hex_decode(&line));
-        if score > best_score {
-            best = output;
-            best_score = score;
-        }
-    }
+    let (best, _, _) = input
+        .lines()
+        .map(|line| one_byte_xor(&hex_decode(&line)))
+        .max_by(|(_, _, a), (_, _, b)| a.total_cmp(b))
+        .unwrap_or((String::from("no good match"), 0x00, -1.0));
     println!("set 1 problem 4: {0}", best);
 }
 
@@ -62,4 +59,45 @@ fn set_1_problem_5() {
             2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
     );
     println!("set 1 problem 5: ok");
+}
+
+fn set_1_problem_6() {
+    assert!(hamming_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes()) == 37);
+
+    let input = reqwest::blocking::get("https://cryptopals.com/static/challenge-data/6.txt")
+        .unwrap()
+        .text()
+        .unwrap()
+        .replace("\n", "");
+    let input = b64_decode(&input);
+
+    let (key_size, _) = (1..=40)
+        .map(|key_size| {
+            let num_blocks = input.len() / key_size;
+            let score = (0..num_blocks - 1)
+                .map(|i| {
+                    hamming_distance(
+                        &input[i * key_size..(i + 1) * key_size],
+                        &input[(i + 1) * key_size..(i + 2) * key_size],
+                    )
+                })
+                .sum::<u32>() as f32
+                / ((num_blocks - 1) * key_size) as f32;
+            (key_size, score)
+        })
+        .min_by(|(_, d1), (_, d2)| d1.total_cmp(d2))
+        .unwrap_or((0, 0.0));
+
+    let mut key = Vec::<u8>::with_capacity(key_size);
+    for byte in 0..key_size {
+        let transposed_input: Vec<u8> =
+            input.iter().skip(byte).step_by(key_size).cloned().collect();
+        let (_, key_byte, _) = one_byte_xor(&transposed_input);
+        key.push(key_byte);
+    }
+
+    println!(
+        "set 1 problem 6: key: {0}",
+        String::from_utf8(key).unwrap_or(String::from("bad encoding"))
+    );
 }

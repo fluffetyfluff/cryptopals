@@ -28,3 +28,11 @@ pub fn xor(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
 pub fn repeating_xor(bytes: &[u8], key: &[u8]) -> Vec<u8> {
     xor(bytes, &key.repeat(bytes.len() / key.len() + 1))
 }
+
+pub fn hamming_distance(bytes_1: &[u8], bytes_2: &[u8]) -> u32 {
+    xor(bytes_1, bytes_2)
+        .iter()
+        .map(|b| b.count_ones())
+        .reduce(|acc, e| acc + e)
+        .unwrap_or(0)
+}
