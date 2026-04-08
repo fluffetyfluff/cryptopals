@@ -1,5 +1,5 @@
 use base64::prelude::*;
-use hex;
+use openssl::symm::Cipher;
 
 pub fn hex_decode(hex_str: &str) -> Vec<u8> {
     hex::decode(hex_str).unwrap()
@@ -35,4 +35,10 @@ pub fn hamming_distance(bytes_1: &[u8], bytes_2: &[u8]) -> u32 {
         .map(|b| b.count_ones())
         .reduce(|acc, e| acc + e)
         .unwrap_or(0)
+}
+
+pub fn aes_128_ecb(bytes: &[u8], key: &[u8]) -> Vec<u8> {
+    assert!(key.len() == 16);
+    let cipher = Cipher::aes_128_ecb();
+    openssl::symm::decrypt(cipher, key, None, bytes).unwrap()
 }

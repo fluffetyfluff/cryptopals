@@ -8,6 +8,7 @@ fn main() {
     set_1_problem_4();
     set_1_problem_5();
     set_1_problem_6();
+    set_1_problem_7();
     println!("all ok");
 }
 
@@ -99,5 +100,22 @@ fn set_1_problem_6() {
     println!(
         "set 1 problem 6: key: {0}",
         String::from_utf8(key).unwrap_or(String::from("bad encoding"))
+    );
+}
+
+fn set_1_problem_7() {
+    let input = reqwest::blocking::get("https://cryptopals.com/static/challenge-data/7.txt")
+        .unwrap()
+        .text()
+        .unwrap()
+        .replace("\n", "");
+    let input = b64_decode(&input);
+
+    let output = aes_128_ecb(&input, "YELLOW SUBMARINE".as_bytes());
+    let output = &String::from_utf8(output).unwrap_or(String::from("bad decryption"));
+
+    println!(
+        "set 1 problem 7: {0}",
+        output.lines().next().unwrap_or("bad decryption")
     );
 }
