@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use cryptopals::attacks::*;
 use cryptopals::primitives::*;
 
@@ -9,6 +11,7 @@ fn main() {
     set_1_problem_5();
     set_1_problem_6();
     set_1_problem_7();
+    set_1_problem_8();
     println!("all ok");
 }
 
@@ -118,4 +121,24 @@ fn set_1_problem_7() {
         "set 1 problem 7: {0}",
         output.lines().next().unwrap_or("bad decryption")
     );
+}
+
+fn set_1_problem_8() {
+    let input = reqwest::blocking::get("https://cryptopals.com/static/challenge-data/8.txt")
+        .unwrap()
+        .text()
+        .unwrap();
+    for line in input.lines() {
+        let ciphertext = hex_decode(&line);
+        let blocks = split_blocks(&ciphertext);
+        let mut set = HashSet::new();
+        for block in blocks.iter() {
+            set.insert(block);
+        }
+        if set.len() != blocks.len() {
+            println!("set 1 problem 8: {0}", &line[..40]);
+            return;
+        }
+    }
+    println!("set 1 problem 8: found nothing");
 }

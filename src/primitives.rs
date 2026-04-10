@@ -42,3 +42,7 @@ pub fn aes_128_ecb(bytes: &[u8], key: &[u8]) -> Vec<u8> {
     let cipher = Cipher::aes_128_ecb();
     openssl::symm::decrypt(cipher, key, None, bytes).unwrap()
 }
+
+pub fn split_blocks(bytes: &[u8]) -> Vec<&[u8]> {
+    bytes.chunks(16).collect()
+}
