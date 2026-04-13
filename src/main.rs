@@ -4,6 +4,11 @@ use cryptopals::attacks::*;
 use cryptopals::primitives::*;
 
 fn main() {
+    //set_1();
+    set_2();
+}
+
+fn set_1() {
     set_1_problem_1();
     set_1_problem_2();
     set_1_problem_3();
@@ -12,7 +17,11 @@ fn main() {
     set_1_problem_6();
     set_1_problem_7();
     set_1_problem_8();
-    println!("all ok");
+}
+
+fn set_2() {
+    set_2_problem_9();
+    set_2_problem_10();
 }
 
 fn set_1_problem_1() {
@@ -113,8 +122,11 @@ fn set_1_problem_7() {
         .unwrap()
         .replace("\n", "");
     let input = b64_decode(&input);
-
-    let output = aes_128_ecb(&input, "YELLOW SUBMARINE".as_bytes());
+    let mut output: Vec<u8> = Vec::new();
+    for block in split_blocks(&input) {
+        let mut decrypted_block = aes_128_decrypt(&block, "YELLOW SUBMARINE".as_bytes());
+        output.append(&mut decrypted_block);
+    }
     let output = &String::from_utf8(output).unwrap_or(String::from("bad decryption"));
 
     println!(
@@ -141,4 +153,18 @@ fn set_1_problem_8() {
         }
     }
     println!("set 1 problem 8: found nothing");
+}
+
+fn set_2_problem_9() {
+    assert!(pkcs_pad(b"YELLOW SUBMARINE", 20) == b"YELLOW SUBMARINE\x04\x04\x04\x04");
+    println!("set 2 problem 9: ok");
+}
+
+fn set_2_problem_10() {
+    let orange = b"ORANGE SUBMARINE";
+    let yellow = b"YELLOW SUBMARINE";
+    assert!(
+        aes_128_cbc_decrypt(&aes_128_cbc_encrypt(orange, orange, yellow), orange, yellow) == orange
+    );
+    println!("set 2 problem 10: ok");
 }
