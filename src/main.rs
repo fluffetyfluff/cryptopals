@@ -122,11 +122,7 @@ fn set_1_problem_7() {
         .unwrap()
         .replace("\n", "");
     let input = b64_decode(&input);
-    let mut output: Vec<u8> = Vec::new();
-    for block in split_blocks(&input) {
-        let mut decrypted_block = aes_128_decrypt(&block, "YELLOW SUBMARINE".as_bytes());
-        output.append(&mut decrypted_block);
-    }
+    let output = aes_128_ecb_decrypt(&input, b"YELLOW SUBMARINE");
     let output = &String::from_utf8(output).unwrap_or(String::from("bad decryption"));
 
     println!(
@@ -156,7 +152,7 @@ fn set_1_problem_8() {
 }
 
 fn set_2_problem_9() {
-    assert!(pkcs_pad(b"YELLOW SUBMARINE", 20) == b"YELLOW SUBMARINE\x04\x04\x04\x04");
+    assert!(pkcs_pad_length(b"YELLOW SUBMARINE", 20) == b"YELLOW SUBMARINE\x04\x04\x04\x04");
     println!("set 2 problem 9: ok");
 }
 
@@ -167,4 +163,8 @@ fn set_2_problem_10() {
         aes_128_cbc_decrypt(&aes_128_cbc_encrypt(orange, orange, yellow), orange, yellow) == orange
     );
     println!("set 2 problem 10: ok");
+}
+
+fn set_2_problem_11() {
+    let input_test = b"blahblahblahblahblahblahblahblahblah";
 }

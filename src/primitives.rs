@@ -58,9 +58,32 @@ pub fn aes_128_decrypt(bytes: &[u8], key: &[u8]) -> Vec<u8> {
     block.to_vec()
 }
 
+pub fn aes_128_ecb_encrypt(bytes: &[u8], key: &[u8]) -> Vec<u8> {
+    assert!(bytes.len() % 16 == 0);
+
+    let mut output: Vec<u8> = Vec::new();
+    for block in split_blocks(&bytes) {
+        let mut block = aes_128_encrypt(&block, key);
+        output.append(&mut block);
+    }
+    output
+}
+
+pub fn aes_128_ecb_decrypt(bytes: &[u8], key: &[u8]) -> Vec<u8> {
+    assert!(bytes.len() % 16 == 0);
+
+    let mut output: Vec<u8> = Vec::new();
+    for block in split_blocks(&bytes) {
+        let mut block = aes_128_decrypt(&block, key);
+        output.append(&mut block);
+    }
+    output
+}
+
 pub fn aes_128_cbc_encrypt(bytes: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
     assert!(bytes.len() % 16 == 0);
     assert!(iv.len() == 16);
+
     let mut prev_block = iv.to_vec();
     let mut output: Vec<u8> = Vec::new();
     for block in split_blocks(bytes) {
@@ -75,6 +98,7 @@ pub fn aes_128_cbc_encrypt(bytes: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
 pub fn aes_128_cbc_decrypt(bytes: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
     assert!(bytes.len() % 16 == 0);
     assert!(iv.len() == 16);
+
     let mut prev_ciphertext = iv.to_vec();
     let mut output: Vec<u8> = Vec::new();
     for block in split_blocks(bytes) {
@@ -90,8 +114,13 @@ pub fn split_blocks(bytes: &[u8]) -> Vec<&[u8]> {
     bytes.chunks(16).collect()
 }
 
-pub fn pkcs_pad(bytes: &[u8], length: usize) -> Vec<u8> {
+pub fn pkcs_pad_length(bytes: &[u8], length: usize) -> Vec<u8> {
     let mut block = bytes.to_vec();
     block.resize(length, (length - bytes.len()) as u8);
     block
+}
+
+pub fn pkcs_pad(bytes: &[u8]) -> Vec<u8> {
+    let length = (bytes.len() / 16) * 16 + 16;
+    pkcs_pad_length(bytes, length)
 }
