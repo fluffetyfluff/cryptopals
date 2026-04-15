@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
 use cryptopals::attacks::*;
+use cryptopals::oracles;
+use cryptopals::oracles::ecb_or_cbc_encrypt_oracle;
 use cryptopals::primitives::*;
 
 fn main() {
@@ -22,6 +24,7 @@ fn set_1() {
 fn set_2() {
     set_2_problem_9();
     set_2_problem_10();
+    set_2_problem_11();
 }
 
 fn set_1_problem_1() {
@@ -166,5 +169,11 @@ fn set_2_problem_10() {
 }
 
 fn set_2_problem_11() {
-    let input_test = b"blahblahblahblahblahblahblahblahblah";
+    let input = b"blahblahblahblahblahblahblahblahblahblahblahblah";
+    let (oracle_output, is_cbc) = ecb_or_cbc_encrypt_oracle(input);
+    let blocks = split_blocks(&oracle_output);
+    let first_potential = *blocks.get(1).unwrap();
+    let second_potential = *blocks.get(2).unwrap();
+    assert!((first_potential != second_potential) == is_cbc);
+    println!("set 2 problem 11: ok");
 }

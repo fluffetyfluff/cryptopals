@@ -9,7 +9,7 @@ pub fn random_bytes(n: usize) -> Vec<u8> {
     bytes
 }
 
-pub fn ecb_or_cbc_encrypt_oracle(input: &[u8]) -> Vec<u8> {
+pub fn ecb_or_cbc_encrypt_oracle(input: &[u8]) -> (Vec<u8>, bool) {
     let key = random_bytes(16);
     let decision = random_bool(0.5);
     let mut random_padding_before = random_bytes(random_range(5..=10));
@@ -21,8 +21,8 @@ pub fn ecb_or_cbc_encrypt_oracle(input: &[u8]) -> Vec<u8> {
 
     if decision {
         let iv = random_bytes(16);
-        aes_128_cbc_encrypt(&input, &key, &iv)
+        (aes_128_cbc_encrypt(&input, &key, &iv), decision)
     } else {
-        aes_128_ecb_encrypt(&input, &key)
+        (aes_128_ecb_encrypt(&input, &key), decision)
     }
 }
