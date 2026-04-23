@@ -1,13 +1,37 @@
+use clap::Parser;
+use cryptopals::attacks::*;
+use cryptopals::oracles::ecb_or_cbc_encrypt_oracle;
+use cryptopals::oracles::ecb_prefix_oracle;
+use cryptopals::primitives::*;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
-use cryptopals::attacks::*;
-use cryptopals::oracles;
-use cryptopals::oracles::ecb_or_cbc_encrypt_oracle;
-use cryptopals::primitives::*;
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None, arg_required_else_help = true)]
+struct Args {
+    /// Set to run (0-8)
+    #[arg(short, long)]
+    set: u8,
+}
 
 fn main() {
-    //set_1();
-    set_2();
+    let args = Args::parse();
+
+    match args.set {
+        1 => set_1(),
+        2 => set_2(),
+        3 => unimplemented(),
+        4 => unimplemented(),
+        5 => unimplemented(),
+        6 => unimplemented(),
+        7 => unimplemented(),
+        8 => unimplemented(),
+        _ => println!(),
+    }
+}
+
+fn unimplemented() {
+    println!("Not yet implemented");
 }
 
 fn set_1() {
@@ -25,6 +49,7 @@ fn set_2() {
     set_2_problem_9();
     set_2_problem_10();
     set_2_problem_11();
+    set_2_problem_12();
 }
 
 fn set_1_problem_1() {
@@ -172,8 +197,43 @@ fn set_2_problem_11() {
     let input = b"blahblahblahblahblahblahblahblahblahblahblahblah";
     let (oracle_output, is_cbc) = ecb_or_cbc_encrypt_oracle(input);
     let blocks = split_blocks(&oracle_output);
-    let first_potential = *blocks.get(1).unwrap();
-    let second_potential = *blocks.get(2).unwrap();
+    let first_potential = blocks[1];
+    let second_potential = blocks[2];
     assert!((first_potential != second_potential) == is_cbc);
     println!("set 2 problem 11: ok");
+}
+
+fn set_2_problem_12() {
+    let mut current_known_start = vec![0x20u8; 15];
+    let mut offset_encryptions: HashMap<usize, Vec<Block>> = HashMap::new();
+    for offset in 0..=15 {
+        let prefix = vec![0x20u8; offset];
+        let oracle_output = ecb_prefix_oracle(&prefix);
+        let oracle_output = split_blocks(&oracle_output);
+        offset_encryptions.insert(offset, oracle_output);
+    }
+    let empty_len = ecb_prefix_oracle(b"").len();
+    for byte_offset in 0..empty_len {
+        let mut dictionary: HashMap<Block, u8> = HashMap::new();
+        for byte in 0u8..=0xffu8 {
+            current_known_start.push(byte);
+            let current_len = current_known_start.len();
+            let oracle_input = &current_known_start[current_len - 16..current_len];
+            let output_block = split_blocks(&ecb_prefix_oracle(oracle_input))[0];
+            dictionary.insert(output_block, byte);
+            current_known_start.pop();
+        }
+        let actual_block = &offset_encryptions[&(15 - (byte_offset % 16))][byte_offset / 16];
+        if let Some(correct_byte) = dictionary.get(actual_block) {
+            current_known_start.push(*correct_byte);
+        }
+    }
+    println!(
+        "set 2 problem 12: {0}",
+        str::from_utf8(&current_known_start[15..])
+            .unwrap()
+            .lines()
+            .next()
+            .unwrap()
+    );
 }

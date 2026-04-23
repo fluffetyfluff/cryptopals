@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 aes = "0.9.0"
 base64 = "0.22.1"
+clap = { version = "4.6.1", features = ["derive"] }
 hex = "0.4.3"
 openssl = "0.10.76"
 phf = { version = "0.13.1", features = ["macros"] }
