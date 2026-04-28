@@ -99,7 +99,6 @@ pub fn aes_128_cbc_encrypt(bytes: &[u8], key: &Block, iv: &Block) -> Vec<u8> {
 
 pub fn aes_128_cbc_decrypt(bytes: &[u8], key: &Block, iv: &Block) -> Vec<u8> {
     assert!(bytes.len() % 16 == 0);
-    assert!(iv.len() == 16);
 
     let mut prev_ciphertext = iv.to_vec();
     let mut output: Vec<u8> = Vec::new();
@@ -125,4 +124,11 @@ pub fn pkcs_pad_length(bytes: &[u8], length: usize) -> Vec<u8> {
 pub fn pkcs_pad(bytes: &[u8]) -> Vec<u8> {
     let length = (bytes.len() / 16) * 16 + 16;
     pkcs_pad_length(bytes, length)
+}
+
+pub fn pkcs_unpad(bytes: &[u8]) -> Vec<u8> {
+    let end_byte = bytes[bytes.len() - 1];
+    let mut bytes = bytes.to_vec();
+    bytes.truncate(bytes.len() - end_byte as usize);
+    bytes
 }

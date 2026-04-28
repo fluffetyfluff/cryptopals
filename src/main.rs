@@ -1,7 +1,6 @@
 use clap::Parser;
 use cryptopals::attacks::*;
-use cryptopals::oracles::ecb_or_cbc_encrypt_oracle;
-use cryptopals::oracles::ecb_prefix_oracle;
+use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -26,7 +25,7 @@ fn main() {
         6 => unimplemented(),
         7 => unimplemented(),
         8 => unimplemented(),
-        _ => println!(),
+        _ => (),
     }
 }
 
@@ -50,6 +49,7 @@ fn set_2() {
     set_2_problem_10();
     set_2_problem_11();
     set_2_problem_12();
+    set_2_problem_13();
 }
 
 fn set_1_problem_1() {
@@ -236,4 +236,18 @@ fn set_2_problem_12() {
             .next()
             .unwrap()
     );
+}
+
+fn set_2_problem_13() {
+    let admin_block = profile_oracle("xxxxxxxxxxadmin");
+    // email=xxxxxxxxxx admin&uid=0&role =user
+    let role_block = profile_oracle("xxxxxxxxadmin");
+    let end_block = profile_oracle("xxxxxxxxxadmin");
+    let mut profile: Vec<u8> = Vec::new();
+    profile.extend(&admin_block[0..16]);
+    profile.extend(&role_block[16..32]);
+    profile.extend(&admin_block[16..32]);
+    profile.extend(&end_block[32..48]);
+    let profile = profile_decrypt_oracle(&profile).unwrap();
+    println!("set 2 problem 13: role: {0}", profile["role"]);
 }

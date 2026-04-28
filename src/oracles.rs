@@ -1,7 +1,8 @@
-use std::sync::LazyLock;
-
 use crate::primitives::*;
+use itertools::Itertools;
 use rand::{random, random_bool, random_range};
+use std::collections::HashMap;
+use std::sync::LazyLock;
 
 static RANDOM_KEY: LazyLock<[u8; 16]> = LazyLock::new(|| random_block());
 
@@ -44,4 +45,32 @@ pub fn ecb_prefix_oracle(input: &[u8]) -> Vec<u8> {
     input.append(&mut content);
     let input = pkcs_pad(&input);
     aes_128_ecb_decrypt(&input, &RANDOM_KEY)
+}
+
+pub fn kv_decode(string: &str) -> Result<HashMap<String, String>, ()> {
+    let kv_pairs = string.split('&');
+    let mut map = HashMap::new();
+    for pair in kv_pairs {
+        let (key, value) = pair.split('=').collect_tuple().ok_or(())?;
+        map.insert(String::from(key), String::from(value));
+    }
+    Ok(map)
+}
+
+pub fn create_profile(user_email: &str) -> String {
+    let mut user_email = String::from(user_email);
+    user_email.retain(|c| !(c == '&' || c == '='));
+    format!("email={0}&uid={1}&role={2}", user_email, 10, "user")
+}
+
+pub fn profile_oracle(user_email: &str) -> Vec<u8> {
+    let profile = create_profile(user_email);
+    let profile = pkcs_pad(profile.as_bytes());
+    aes_128_ecb_encrypt(&profile, &RANDOM_KEY)
+}
+
+pub fn profile_decrypt_oracle(profile: &[u8]) -> Result<HashMap<String, String>, ()> {
+    let profile = aes_128_ecb_decrypt(profile, &RANDOM_KEY);
+    let profile = pkcs_unpad(&profile);
+    kv_decode(str::from_utf8(&profile).unwrap())
 }
