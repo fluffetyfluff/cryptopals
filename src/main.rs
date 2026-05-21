@@ -50,6 +50,7 @@ fn set_2() {
     set_2_problem_11();
     set_2_problem_12();
     set_2_problem_13();
+    set_2_problem_14();
 }
 
 fn set_1_problem_1() {
@@ -240,7 +241,6 @@ fn set_2_problem_12() {
 
 fn set_2_problem_13() {
     let admin_block = profile_oracle("xxxxxxxxxxadmin");
-    // email=xxxxxxxxxx admin&uid=0&role =user
     let role_block = profile_oracle("xxxxxxxxadmin");
     let end_block = profile_oracle("xxxxxxxxxadmin");
     let mut profile: Vec<u8> = Vec::new();
@@ -250,4 +250,61 @@ fn set_2_problem_13() {
     profile.extend(&end_block[32..48]);
     let profile = profile_decrypt_oracle(&profile).unwrap();
     println!("set 2 problem 13: role: {0}", profile["role"]);
+}
+
+fn set_2_problem_14() {
+    // find random.len()
+    let mut length_prefix: Vec<u8> = vec![0x20u8; 32];
+    let mut n = 0; // number of padding bits needed to align blocks
+    let block_offset; // first duplicate block
+    loop {
+        let oracle_out = ecb_prefix_postfix_oracle(&length_prefix);
+        let blocks = split_blocks(&oracle_out);
+        let mut seen = HashSet::new();
+
+        let duplicate_index = blocks.iter().position(|x| !seen.insert(x));
+        if let Some(index) = duplicate_index {
+            block_offset = index - 1;
+            break;
+        }
+
+        n += 1;
+        length_prefix.push(0x20);
+    }
+
+    // crack the ecb
+    let mut current_known_start = vec![0x20u8; n + 15];
+    let mut offset_encryptions: HashMap<usize, Vec<Block>> = HashMap::new();
+    for offset in 0..=15 {
+        let prefix = vec![0x20u8; n + offset];
+        let oracle_output = ecb_prefix_postfix_oracle(&prefix);
+        let oracle_output = split_blocks(&oracle_output);
+        offset_encryptions.insert(offset, oracle_output);
+    }
+    let no_prefix_len = ecb_prefix_postfix_oracle(b"").len() - (block_offset * 16 - n);
+    for byte_offset in 0..no_prefix_len {
+        let mut dictionary: HashMap<Block, u8> = HashMap::new();
+        for byte in 0u8..=0xffu8 {
+            current_known_start.push(byte);
+            let current_len = current_known_start.len();
+            let oracle_input = &current_known_start[current_len - (16 + n)..current_len];
+            let output_block = split_blocks(&ecb_prefix_postfix_oracle(oracle_input))[block_offset];
+            dictionary.insert(output_block, byte);
+            current_known_start.pop();
+        }
+        let actual_block =
+            &offset_encryptions[&(15 - (byte_offset % 16))][(byte_offset / 16) + block_offset];
+        if let Some(correct_byte) = dictionary.get(actual_block) {
+            current_known_start.push(*correct_byte);
+        }
+    }
+    println!(
+        "set 2 problem 14: random_bytes: {0} output: {1}",
+        block_offset * 16 + n,
+        str::from_utf8(&current_known_start[15 + n..])
+            .unwrap()
+            .lines()
+            .next()
+            .unwrap()
+    );
 }

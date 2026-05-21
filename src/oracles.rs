@@ -5,6 +5,10 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 static RANDOM_KEY: LazyLock<[u8; 16]> = LazyLock::new(|| random_block());
+static RANDOM_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
+    let num_bytes: usize = random_range(0..64);
+    random_bytes(num_bytes)
+});
 
 pub fn random_bytes(n: usize) -> Vec<u8> {
     let mut bytes: Vec<u8> = Vec::new();
@@ -45,6 +49,12 @@ pub fn ecb_prefix_oracle(input: &[u8]) -> Vec<u8> {
     input.append(&mut content);
     let input = pkcs_pad(&input);
     aes_128_ecb_decrypt(&input, &RANDOM_KEY)
+}
+
+pub fn ecb_prefix_postfix_oracle(input: &[u8]) -> Vec<u8> {
+    let mut rand_bytes = RANDOM_BYTES.clone();
+    rand_bytes.append(&mut input.to_vec());
+    ecb_prefix_oracle(&rand_bytes)
 }
 
 pub fn kv_decode(string: &str) -> Result<HashMap<String, String>, ()> {
