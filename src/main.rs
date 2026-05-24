@@ -51,6 +51,7 @@ fn set_2() {
     set_2_problem_12();
     set_2_problem_13();
     set_2_problem_14();
+    set_2_problem_15();
 }
 
 fn set_1_problem_1() {
@@ -307,4 +308,10 @@ fn set_2_problem_14() {
             .next()
             .unwrap()
     );
+}
+
+fn set_2_problem_15() {
+    assert!(pkcs_unpad(b"ICE ICE BABY\x04\x04\x04\x04").unwrap() == b"ICE ICE BABY");
+    assert!(pkcs_unpad(b"ICE ICE BABY\x01\x02\x03\x04").is_err());
+    println!("set 2 problem 15: ok");
 }

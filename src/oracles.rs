@@ -82,5 +82,5 @@ pub fn profile_oracle(user_email: &str) -> Vec<u8> {
 pub fn profile_decrypt_oracle(profile: &[u8]) -> Result<HashMap<String, String>, ()> {
     let profile = aes_128_ecb_decrypt(profile, &RANDOM_KEY);
     let profile = pkcs_unpad(&profile);
-    kv_decode(str::from_utf8(&profile).unwrap())
+    kv_decode(str::from_utf8(&profile.unwrap()).unwrap())
 }
