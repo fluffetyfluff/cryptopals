@@ -52,6 +52,7 @@ fn set_2() {
     set_2_problem_13();
     set_2_problem_14();
     set_2_problem_15();
+    set_2_problem_16();
 }
 
 fn set_1_problem_1() {
@@ -189,9 +190,8 @@ fn set_2_problem_9() {
 fn set_2_problem_10() {
     let orange = b"ORANGE SUBMARINE";
     let yellow = b"YELLOW SUBMARINE";
-    assert!(
-        aes_128_cbc_decrypt(&aes_128_cbc_encrypt(orange, orange, yellow), orange, yellow) == orange
-    );
+    let (bytes, iv) = aes_128_cbc_encrypt(orange, orange, yellow);
+    assert!(aes_128_cbc_decrypt(&bytes, orange, &iv) == orange);
     println!("set 2 problem 10: ok");
 }
 
@@ -314,4 +314,18 @@ fn set_2_problem_15() {
     assert!(pkcs_unpad(b"ICE ICE BABY\x04\x04\x04\x04").unwrap() == b"ICE ICE BABY");
     assert!(pkcs_unpad(b"ICE ICE BABY\x01\x02\x03\x04").is_err());
     println!("set 2 problem 15: ok");
+}
+
+fn set_2_problem_16() {
+    let target = b";admin=true;";
+    let (bytes, iv) = cbc_encrypt_oracle(target);
+    assert!(!cbc_decrypt_oracle(&bytes, &iv));
+    let (bytes, iv) = cbc_encrypt_oracle(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    let mut mask = [0x0; 256];
+    for i in 0..12 {
+        mask[i + 16] = target[i];
+    }
+    let mod_bytes = xor(&bytes, &mask);
+    assert!(cbc_decrypt_oracle(&mod_bytes, &iv));
+    println!("set 2 problem 16: ok");
 }

@@ -82,7 +82,7 @@ pub fn aes_128_ecb_decrypt(bytes: &[u8], key: &Block) -> Vec<u8> {
     output
 }
 
-pub fn aes_128_cbc_encrypt(bytes: &[u8], key: &Block, iv: &Block) -> Vec<u8> {
+pub fn aes_128_cbc_encrypt(bytes: &[u8], key: &Block, iv: &Block) -> (Vec<u8>, Block) {
     assert!(bytes.len() % 16 == 0);
 
     let mut prev_block = iv;
@@ -94,7 +94,7 @@ pub fn aes_128_cbc_encrypt(bytes: &[u8], key: &Block, iv: &Block) -> Vec<u8> {
         prev_block = &encrypted_block;
         output.extend(encrypted_block);
     }
-    output
+    (output, iv.clone())
 }
 
 pub fn aes_128_cbc_decrypt(bytes: &[u8], key: &Block, iv: &Block) -> Vec<u8> {

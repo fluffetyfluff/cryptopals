@@ -33,7 +33,7 @@ pub fn ecb_or_cbc_encrypt_oracle(input: &[u8]) -> (Vec<u8>, bool) {
 
     if decision {
         let iv = random_block();
-        (aes_128_cbc_encrypt(&input, &RANDOM_KEY, &iv), decision)
+        (aes_128_cbc_encrypt(&input, &RANDOM_KEY, &iv).0, decision)
     } else {
         (aes_128_ecb_encrypt(&input, &RANDOM_KEY), decision)
     }
@@ -83,4 +83,25 @@ pub fn profile_decrypt_oracle(profile: &[u8]) -> Result<HashMap<String, String>,
     let profile = aes_128_ecb_decrypt(profile, &RANDOM_KEY);
     let profile = pkcs_unpad(&profile);
     kv_decode(str::from_utf8(&profile.unwrap()).unwrap())
+}
+
+pub fn cbc_encrypt_oracle(user_data: &[u8]) -> (Vec<u8>, Block) {
+    let user_data = String::from_utf8(user_data.to_vec())
+        .unwrap()
+        .replace(";", "%3B")
+        .replace("=", "%3D");
+    let input = [
+        b"comment1=cooking%20MCs;userdata=",
+        user_data.as_bytes(),
+        b";comment2=%20like%20a%20pound%20of%20bacon",
+    ]
+    .concat();
+    let input = pkcs_pad(&input);
+    aes_128_cbc_encrypt(&input, &RANDOM_KEY, &random_block())
+}
+
+pub fn cbc_decrypt_oracle(input: &[u8], iv: &Block) -> bool {
+    let decryption = aes_128_cbc_decrypt(input, &RANDOM_KEY, iv);
+    let decryption = String::from_utf8_lossy(&decryption);
+    decryption.contains(";admin=true;")
 }
