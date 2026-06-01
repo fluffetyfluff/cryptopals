@@ -128,6 +128,9 @@ pub fn pkcs_pad(bytes: &[u8]) -> Vec<u8> {
 
 pub fn pkcs_unpad(bytes: &[u8]) -> Result<Vec<u8>, ()> {
     let end_byte = bytes[bytes.len() - 1];
+    if end_byte as usize > bytes.len() {
+        return Err(());
+    }
     let mut bytes = bytes.to_vec();
     let mut padding = bytes.split_off(bytes.len() - end_byte as usize);
     padding.dedup();

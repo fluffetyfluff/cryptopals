@@ -19,7 +19,7 @@ fn main() {
     match args.set {
         1 => set_1(),
         2 => set_2(),
-        3 => unimplemented(),
+        3 => set_3(),
         4 => unimplemented(),
         5 => unimplemented(),
         6 => unimplemented(),
@@ -53,6 +53,10 @@ fn set_2() {
     set_2_problem_14();
     set_2_problem_15();
     set_2_problem_16();
+}
+
+fn set_3() {
+    set_3_problem_17();
 }
 
 fn set_1_problem_1() {
@@ -328,4 +332,52 @@ fn set_2_problem_16() {
     let mod_bytes = xor(&bytes, &mask);
     assert!(cbc_decrypt_oracle(&mod_bytes, &iv));
     println!("set 2 problem 16: ok");
+}
+
+fn set_3_problem_17() {
+    let (bytes, iv) = padding_cbc_encrypt_oracle();
+    assert!(padding_cbc_decrypt_oracle(&bytes, &iv).is_ok());
+
+    let mut plaintext: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut blocks = vec![iv];
+    blocks.extend(split_blocks(&bytes));
+
+    for i in 1..blocks.len() {
+        let prev_block = blocks[i - 1];
+        let curr_block = blocks[i];
+
+        let mut intermediate = [0u8; 16];
+        let mut plaintext_block = [0u8; 16];
+
+        for byte_idx in (0..16).rev() {
+            let padding_val = (16 - byte_idx) as u8;
+
+            for guess in 0..=255u8 {
+                let mut tampered_iv = [0u8; 16];
+                for k in (byte_idx + 1)..16 {
+                    tampered_iv[k] = intermediate[k] ^ padding_val;
+                }
+                tampered_iv[byte_idx] = guess;
+
+                if padding_cbc_decrypt_oracle(&curr_block, &tampered_iv).is_ok() {
+                    if byte_idx == 15 {
+                        let mut verify_iv = tampered_iv;
+                        verify_iv[14] ^= 0xFF;
+                        if padding_cbc_decrypt_oracle(&curr_block, &verify_iv).is_err() {
+                            continue;
+                        }
+                    }
+                    intermediate[byte_idx] = guess ^ padding_val;
+                    plaintext_block[byte_idx] = intermediate[byte_idx] ^ prev_block[byte_idx];
+                    break;
+                }
+            }
+        }
+        plaintext.extend_from_slice(&plaintext_block);
+    }
+
+    println!(
+        "set 3 problem 17: {0}",
+        String::from_utf8(plaintext).unwrap()
+    );
 }

@@ -1,7 +1,8 @@
 use crate::primitives::*;
 use itertools::Itertools;
-use rand::{random, random_bool, random_range};
-use std::collections::HashMap;
+use rand::seq::IteratorRandom;
+use rand::{random, random_bool, random_range, rng};
+use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
 static RANDOM_KEY: LazyLock<[u8; 16]> = LazyLock::new(|| random_block());
@@ -104,4 +105,28 @@ pub fn cbc_decrypt_oracle(input: &[u8], iv: &Block) -> bool {
     let decryption = aes_128_cbc_decrypt(input, &RANDOM_KEY, iv);
     let decryption = String::from_utf8_lossy(&decryption);
     decryption.contains(";admin=true;")
+}
+
+pub fn padding_cbc_encrypt_oracle() -> (Vec<u8>, Block) {
+    let ciphertext_set = HashSet::from([
+        b64_decode("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc="),
+        b64_decode("MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic="),
+        b64_decode("MDAwMDAyUXVpY2sgdG8gdGhlIHBvaW50LCB0byB0aGUgcG9pbnQsIG5vIGZha2luZw=="),
+        b64_decode("MDAwMDAzQ29va2luZyBNQydzIGxpa2UgYSBwb3VuZCBvZiBiYWNvbg=="),
+        b64_decode("MDAwMDA0QnVybmluZyAnZW0sIGlmIHlvdSBhaW4ndCBxdWljayBhbmQgbmltYmxl"),
+        b64_decode("MDAwMDA1SSBnbyBjcmF6eSB3aGVuIEkgaGVhciBhIGN5bWJhbA=="),
+        b64_decode("MDAwMDA2QW5kIGEgaGlnaCBoYXQgd2l0aCBhIHNvdXBlZCB1cCB0ZW1wbw=="),
+        b64_decode("MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8="),
+        b64_decode("MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g="),
+        b64_decode("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"),
+    ]);
+    let mut rng = rng();
+    let ciphertext = ciphertext_set.iter().choose(&mut rng).unwrap();
+    let ciphertext = pkcs_pad(ciphertext);
+    aes_128_cbc_encrypt(&ciphertext, &RANDOM_KEY, &random_block())
+}
+
+pub fn padding_cbc_decrypt_oracle(bytes: &[u8], iv: &Block) -> Result<Vec<u8>, ()> {
+    let plaintext = aes_128_cbc_decrypt(bytes, &RANDOM_KEY, iv);
+    pkcs_unpad(&plaintext)
 }
