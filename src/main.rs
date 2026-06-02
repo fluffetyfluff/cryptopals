@@ -2,6 +2,7 @@ use clap::Parser;
 use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
+use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -59,6 +60,7 @@ fn set_3() {
     set_3_problem_17();
     set_3_problem_18();
     set_3_problem_19();
+    set_3_problem_20();
 }
 
 fn set_1_problem_1() {
@@ -407,4 +409,43 @@ fn set_3_problem_18() {
 
 fn set_3_problem_19() {
     println!("set 3 problem 19: skipped");
+}
+
+fn set_3_problem_20() {
+    let input = reqwest::blocking::get("https://cryptopals.com/static/challenge-data/20.txt")
+        .unwrap()
+        .text()
+        .unwrap();
+    let mut lines: Vec<Vec<u8>> = Vec::new();
+    let mut shortest_length: usize = 1000;
+    for line in input.lines() {
+        let ciphertext = b64_decode(line);
+        shortest_length = cmp::min(shortest_length, ciphertext.len());
+        lines.push(ciphertext);
+    }
+    lines
+        .iter_mut()
+        .map(|line| {
+            line.truncate(shortest_length);
+            line
+        })
+        .reduce(|line1, line2| {
+            line1.append(line2);
+            line1
+        });
+
+    let input = &lines[0];
+    let key_size = shortest_length;
+    let mut key = Vec::<u8>::with_capacity(key_size);
+    for byte in 0..key_size {
+        let transposed_input: Vec<u8> =
+            input.iter().skip(byte).step_by(key_size).cloned().collect();
+        let (_, key_byte, _) = one_byte_xor(&transposed_input);
+        key.push(key_byte);
+    }
+
+    println!(
+        "set 3 problem 20: {0}",
+        String::from_utf8_lossy(&xor(input, &key))
+    );
 }
