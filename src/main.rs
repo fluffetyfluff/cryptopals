@@ -58,6 +58,7 @@ fn set_2() {
 fn set_3() {
     set_3_problem_17();
     set_3_problem_18();
+    set_3_problem_19();
 }
 
 fn set_1_problem_1() {
@@ -376,6 +377,7 @@ fn set_3_problem_17() {
         }
         plaintext.extend_from_slice(&plaintext_block);
     }
+    let plaintext = pkcs_unpad(&plaintext).unwrap();
 
     println!("set 3 problem 17: {0}", String::from_utf8_lossy(&plaintext));
 }
@@ -401,4 +403,8 @@ fn set_3_problem_18() {
         &ciphertext,
     );
     println!("set 3 problem 18: {0}", String::from_utf8_lossy(&plaintext));
+}
+
+fn set_3_problem_19() {
+    println!("set 3 problem 19: skipped");
 }
