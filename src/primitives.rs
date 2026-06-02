@@ -5,6 +5,7 @@ use aes::{
 use base64::prelude::*;
 
 pub type Block = [u8; 16];
+pub type Nonce = [u8; 8];
 
 pub fn hex_decode(hex_str: &str) -> Vec<u8> {
     hex::decode(hex_str).unwrap()
@@ -108,6 +109,27 @@ pub fn aes_128_cbc_decrypt(bytes: &[u8], key: &Block, iv: &Block) -> Vec<u8> {
         prev_ciphertext = block.to_vec();
         output.append(&mut decrypted_block);
     }
+    output
+}
+
+pub fn aes_128_ctr_keystream(len: usize, key: &Block, nonce: &Nonce) -> Vec<u8> {
+    let mut output: Vec<u8> = Vec::with_capacity(len);
+    let mut nonce_le: Nonce = [0x0; 8];
+    nonce_le.copy_from_slice(nonce);
+    nonce_le.reverse();
+    let mut input: Block = [0x0; 16];
+    input[..8].copy_from_slice(&nonce_le);
+    for ctr in 0..len as u64 / 16 {
+        let ctr_bytes: Nonce = ctr.to_le_bytes();
+        input[8..].copy_from_slice(&ctr_bytes);
+        let keystream_block = aes_128_encrypt(&input, key);
+        output.extend(keystream_block);
+    }
+
+    let ctr_bytes: Nonce = (len as u64 / 16).to_le_bytes();
+    input[8..].copy_from_slice(&ctr_bytes);
+    let final_block = aes_128_encrypt(&input, key);
+    output.extend(&final_block[..len % 16]);
     output
 }
 

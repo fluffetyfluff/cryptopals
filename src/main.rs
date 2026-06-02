@@ -57,6 +57,7 @@ fn set_2() {
 
 fn set_3() {
     set_3_problem_17();
+    set_3_problem_18();
 }
 
 fn set_1_problem_1() {
@@ -376,8 +377,28 @@ fn set_3_problem_17() {
         plaintext.extend_from_slice(&plaintext_block);
     }
 
-    println!(
-        "set 3 problem 17: {0}",
-        String::from_utf8(plaintext).unwrap()
+    println!("set 3 problem 17: {0}", String::from_utf8_lossy(&plaintext));
+}
+
+fn set_3_problem_18() {
+    assert!(
+        aes_128_ctr_keystream(
+            0x42,
+            b"YELLOW SUBMARINE",
+            b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+        .len()
+            == 0x42
     );
+    let ciphertext =
+        b64_decode("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==");
+    let plaintext = xor(
+        &aes_128_ctr_keystream(
+            ciphertext.len(),
+            b"YELLOW SUBMARINE",
+            b"\x00\x00\x00\x00\x00\x00\x00\x00",
+        ),
+        &ciphertext,
+    );
+    println!("set 3 problem 18: {0}", String::from_utf8_lossy(&plaintext));
 }
