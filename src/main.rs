@@ -61,6 +61,7 @@ fn set_3() {
     set_3_problem_18();
     set_3_problem_19();
     set_3_problem_20();
+    set_3_problem_21();
 }
 
 fn set_1_problem_1() {
@@ -448,4 +449,14 @@ fn set_3_problem_20() {
         "set 3 problem 20: {0}",
         String::from_utf8_lossy(&xor(input, &key))
     );
+}
+
+fn set_3_problem_21() {
+    let mut mt = Mt19937::new(5489);
+    assert!(mt.rand() == 3499211612);
+    assert!(mt.rand() == 581869302);
+    assert!(mt.rand() == 3890346734);
+    assert!(mt.rand() == 3586334585);
+    assert!(mt.rand() == 545404204);
+    println!("set 3 problem 21: correct");
 }

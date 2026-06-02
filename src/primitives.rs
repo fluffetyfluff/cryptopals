@@ -7,6 +7,48 @@ use base64::prelude::*;
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
 
+pub struct Mt19937 {
+    state_array: [u32; 624],
+    state_index: usize,
+}
+
+impl Mt19937 {
+    pub fn new(mut seed: u32) -> Self {
+        let mut mt = Self {
+            state_array: [0; 624],
+            state_index: 0,
+        };
+        mt.state_array[0] = seed;
+        for i in 1..624 {
+            seed = 1812433253u32.wrapping_mul(seed ^ (seed >> 30)) + i as u32;
+            mt.state_array[i] = seed;
+        }
+        mt.state_index = 0;
+        mt
+    }
+
+    pub fn rand(&mut self) -> u32 {
+        let k = self.state_index;
+        let j = (k + 1) % 624;
+        let umask = 0xFFFFFFFF << 31;
+        let rmask = 0xFFFFFFFF >> 1;
+        let x = (self.state_array[k] & umask) | (self.state_array[j] & rmask);
+        let mut x_a = x >> 1;
+        if x & 1 == 1 {
+            x_a = x_a ^ 0x9908B0DF;
+        };
+        let j = (k + 397) % 624;
+        let x = self.state_array[j] ^ x_a;
+        self.state_array[k] = x;
+        self.state_index = (k + 1) % 624;
+
+        let y = x ^ (x >> 11);
+        let y = y ^ ((y << 7) & 0x9D2C5680);
+        let y = y ^ ((y << 15) & 0xEFC60000);
+        y ^ (y >> 18)
+    }
+}
+
 pub fn hex_decode(hex_str: &str) -> Vec<u8> {
     hex::decode(hex_str).unwrap()
 }
