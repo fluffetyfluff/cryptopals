@@ -2,9 +2,12 @@ use clap::Parser;
 use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
+use rand::random_range;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, arg_required_else_help = true)]
@@ -62,6 +65,7 @@ fn set_3() {
     set_3_problem_19();
     set_3_problem_20();
     set_3_problem_21();
+    set_3_problem_22();
 }
 
 fn set_1_problem_1() {
@@ -459,4 +463,19 @@ fn set_3_problem_21() {
     assert!(mt.rand() == 3586334585);
     assert!(mt.rand() == 545404204);
     println!("set 3 problem 21: correct");
+}
+
+fn set_3_problem_22() {
+    let output = unix_seeded_mt_oracle();
+    let current_timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+    let mut seed = 0;
+    for delay in 0..1100 {
+        if Mt19937::new(current_timestamp - delay).rand() == output {
+            seed = current_timestamp - delay;
+        }
+    }
+    println!("set 3 problem 22: {0}", seed);
 }

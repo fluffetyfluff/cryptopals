@@ -4,6 +4,7 @@ use rand::seq::IteratorRandom;
 use rand::{random, random_bool, random_range, rng};
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 static RANDOM_KEY: LazyLock<[u8; 16]> = LazyLock::new(|| random_block());
 static RANDOM_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
@@ -129,4 +130,13 @@ pub fn padding_cbc_encrypt_oracle() -> (Vec<u8>, Block) {
 pub fn padding_cbc_decrypt_oracle(bytes: &[u8], iv: &Block) -> Result<Vec<u8>, ()> {
     let plaintext = aes_128_cbc_decrypt(bytes, &RANDOM_KEY, iv);
     pkcs_unpad(&plaintext)
+}
+
+pub fn unix_seeded_mt_oracle() -> u32 {
+    let delay = random_range(0..1000);
+    let current_timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u32;
+    Mt19937::new(current_timestamp - delay).rand()
 }
