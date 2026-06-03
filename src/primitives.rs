@@ -20,7 +20,9 @@ impl Mt19937 {
         };
         mt.state_array[0] = seed;
         for i in 1..624 {
-            seed = 1812433253u32.wrapping_mul(seed ^ (seed >> 30)) + i as u32;
+            seed = 1812433253u32
+                .wrapping_mul(seed ^ (seed >> 30))
+                .wrapping_add(i as u32); // seed 7974 makes this crash if not wrapping!
             mt.state_array[i] = seed;
         }
         mt.state_index = 0;

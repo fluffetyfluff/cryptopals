@@ -140,3 +140,14 @@ pub fn unix_seeded_mt_oracle() -> u32 {
         .as_secs() as u32;
     Mt19937::new(current_timestamp - delay).rand()
 }
+
+pub fn mt_stream_cipher_oracle() -> (Vec<u8>, u16) {
+    let seed: u16 = random();
+    let mut mt = Mt19937::new(seed as u32);
+    let mut plaintext = random_bytes(64);
+    plaintext.append(&mut vec![b'A'; 14]);
+    for i in 0..plaintext.len() {
+        plaintext[i] = plaintext[i] ^ (mt.rand() as u8);
+    }
+    (plaintext, seed)
+}

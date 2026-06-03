@@ -2,7 +2,6 @@ use clap::Parser;
 use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
-use rand::random_range;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -67,6 +66,7 @@ fn set_3() {
     set_3_problem_21();
     set_3_problem_22();
     set_3_problem_23();
+    set_3_problem_24();
 }
 
 fn set_1_problem_1() {
@@ -489,7 +489,7 @@ fn set_3_problem_23() {
     let y = y ^ (y >> 18);
     assert!(x == untemper_mt19937(y));
 
-    let mut mt = Mt19937::new(1234);
+    let mut mt = Mt19937::new(7974);
     let mut state = [0u32; 624];
     for i in 0..624 {
         state[i] = untemper_mt19937(mt.rand());
@@ -503,4 +503,23 @@ fn set_3_problem_23() {
         mt.rand(),
         cloned_mt.rand()
     );
+}
+
+fn set_3_problem_24() {
+    let (ciphertext, secret_seed) = mt_stream_cipher_oracle();
+    let mut found_seed: u16 = 0;
+    for seed in 0..=u16::MAX {
+        let mut plaintext: Vec<u8> = Vec::with_capacity(ciphertext.len());
+        let mut mt = Mt19937::new(seed as u32);
+        for byte in ciphertext.iter() {
+            let key_byte = mt.rand() as u8;
+            plaintext.push(byte ^ key_byte);
+        }
+        if &plaintext[plaintext.len() - 14..] == b"AAAAAAAAAAAAAA" {
+            found_seed = seed;
+            break;
+        }
+    }
+    assert!(secret_seed == found_seed);
+    println!("set 3 problem 24: secret seed: {secret_seed} found seed: {found_seed}");
 }
