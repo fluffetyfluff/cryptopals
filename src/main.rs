@@ -66,6 +66,7 @@ fn set_3() {
     set_3_problem_20();
     set_3_problem_21();
     set_3_problem_22();
+    set_3_problem_23();
 }
 
 fn set_1_problem_1() {
@@ -478,4 +479,28 @@ fn set_3_problem_22() {
         }
     }
     println!("set 3 problem 22: {0}", seed);
+}
+
+fn set_3_problem_23() {
+    let x: u32 = 0b00011111011100001010010110000101;
+    let y = x ^ (x >> 11);
+    let y = y ^ ((y << 7) & 0x9D2C5680);
+    let y = y ^ ((y << 15) & 0xEFC60000);
+    let y = y ^ (y >> 18);
+    assert!(x == untemper_mt19937(y));
+
+    let mut mt = Mt19937::new(1234);
+    let mut state = [0u32; 624];
+    for i in 0..624 {
+        state[i] = untemper_mt19937(mt.rand());
+    }
+    let mut cloned_mt = Mt19937::from_state(state);
+    assert!(mt.rand() == cloned_mt.rand());
+    assert!(mt.rand() == cloned_mt.rand());
+    assert!(mt.rand() == cloned_mt.rand());
+    println!(
+        "set 3 problem 23: orig: {0} cloned: {1}",
+        mt.rand(),
+        cloned_mt.rand()
+    );
 }

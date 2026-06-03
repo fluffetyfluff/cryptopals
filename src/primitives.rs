@@ -27,6 +27,13 @@ impl Mt19937 {
         mt
     }
 
+    pub fn from_state(state: [u32; 624]) -> Self {
+        Self {
+            state_array: state,
+            state_index: 0,
+        }
+    }
+
     pub fn rand(&mut self) -> u32 {
         let k = self.state_index;
         let j = (k + 1) % 624;
