@@ -71,6 +71,7 @@ fn set_3() {
 
 fn set_4() {
     set_4_problem_25();
+    set_4_problem_26();
 }
 
 fn set_1_problem_1() {
@@ -542,4 +543,20 @@ fn set_4_problem_25() {
     let keystream = ctr_edit(&ciphertext, 0, &vec![0x0u8; ciphertext.len()]);
     assert!(&plaintext == &xor(&ciphertext, &keystream));
     println!("set 4 problem 25: ok");
+}
+
+fn set_4_problem_26() {
+    let target = b";admin=true;";
+    let (bytes, nonce) = ctr_encrypt_oracle(target);
+    assert!(!ctr_decrypt_oracle(&bytes, nonce));
+
+    let (bytes, nonce) = ctr_encrypt_oracle(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    let mut mask = [0x0u8; 256];
+    for i in 0..12 {
+        mask[i + 32] = target[i];
+    }
+    let bytes = xor(&bytes, &mask);
+    assert!(ctr_decrypt_oracle(&bytes, nonce));
+
+    println!("set 4 problem 26: ok");
 }

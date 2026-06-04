@@ -166,3 +166,27 @@ pub fn ctr_edit(ciphertext: &[u8], offset: usize, newtext: &[u8]) -> Vec<u8> {
     edited[offset..offset + newtext.len()].copy_from_slice(&new_ciphertext);
     edited
 }
+
+pub fn ctr_encrypt_oracle(user_data: &[u8]) -> (Vec<u8>, Nonce) {
+    let user_data = String::from_utf8(user_data.to_vec())
+        .unwrap()
+        .replace(";", "%3B")
+        .replace("=", "%3D");
+    let plaintext = [
+        b"comment1=cooking%20MCs;userdata=",
+        user_data.as_bytes(),
+        b";comment2=%20like%20a%20pound%20of%20bacon",
+    ]
+    .concat();
+    let nonce: Nonce = random();
+    let keystream = aes_128_ctr_keystream(plaintext.len(), &RANDOM_KEY, &nonce);
+    let ciphertext = xor(&plaintext, &keystream);
+    (ciphertext, nonce)
+}
+
+pub fn ctr_decrypt_oracle(ciphertext: &[u8], nonce: Nonce) -> bool {
+    let keystream = aes_128_ctr_keystream(ciphertext.len(), &RANDOM_KEY, &nonce);
+    let decryption = xor(ciphertext, &keystream);
+    let decryption = String::from_utf8_lossy(&decryption);
+    decryption.contains(";admin=true;")
+}
