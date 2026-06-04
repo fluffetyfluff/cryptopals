@@ -25,6 +25,10 @@ pub fn random_block() -> Block {
     random()
 }
 
+pub fn oracle_key() -> Block {
+    *RANDOM_KEY
+}
+
 pub fn ecb_or_cbc_encrypt_oracle(input: &[u8]) -> (Vec<u8>, bool) {
     let decision = random_bool(0.5);
     let mut random_padding_before = random_bytes(random_range(5..=10));
@@ -107,6 +111,30 @@ pub fn cbc_decrypt_oracle(input: &[u8], iv: &Block) -> bool {
     let decryption = aes_128_cbc_decrypt(input, &RANDOM_KEY, iv);
     let decryption = String::from_utf8_lossy(&decryption);
     decryption.contains(";admin=true;")
+}
+
+pub fn cbc_encrypt_iv_oracle(user_data: &[u8]) -> Vec<u8> {
+    let user_data = String::from_utf8(user_data.to_vec())
+        .unwrap()
+        .replace(";", "%3B")
+        .replace("=", "%3D");
+    let input = [
+        b"comment1=cooking%20MCs;userdata=",
+        user_data.as_bytes(),
+        b";comment2=%20like%20a%20pound%20of%20bacon",
+    ]
+    .concat();
+    let input = pkcs_pad(&input);
+    aes_128_cbc_encrypt(&input, &RANDOM_KEY, &RANDOM_KEY).0
+}
+
+pub fn cbc_decrypt_iv_oracle(input: &[u8]) -> Result<bool, Vec<u8>> {
+    let decryption = aes_128_cbc_decrypt(input, &RANDOM_KEY, &RANDOM_KEY);
+    if let Ok(decryption) = str::from_utf8(&decryption) {
+        Ok(decryption.contains(";admin=true;"))
+    } else {
+        Err(decryption)
+    }
 }
 
 pub fn padding_cbc_encrypt_oracle() -> (Vec<u8>, Block) {

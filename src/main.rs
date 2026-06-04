@@ -72,6 +72,7 @@ fn set_3() {
 fn set_4() {
     set_4_problem_25();
     set_4_problem_26();
+    set_4_problem_27();
 }
 
 fn set_1_problem_1() {
@@ -559,4 +560,17 @@ fn set_4_problem_26() {
     assert!(ctr_decrypt_oracle(&bytes, nonce));
 
     println!("set 4 problem 26: ok");
+}
+
+fn set_4_problem_27() {
+    let ciphertext = cbc_encrypt_iv_oracle(b"");
+    let block = split_blocks(&ciphertext)[0];
+    let mut new_ciphertext = [0x0u8; 3 * 16];
+    new_ciphertext[..16].copy_from_slice(&block);
+    new_ciphertext[32..].copy_from_slice(&block);
+    let plaintext = cbc_decrypt_iv_oracle(&new_ciphertext).unwrap_err();
+    let blocks = split_blocks(&plaintext);
+    let key = xor(&blocks[0], &blocks[2]);
+    assert!(key == oracle_key());
+    println!("set 4 problem 27: recovered key: {0}", hex_encode(&key));
 }
