@@ -6,7 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-static RANDOM_KEY: LazyLock<[u8; 16]> = LazyLock::new(|| random_block());
+static RANDOM_KEY: LazyLock<Block> = LazyLock::new(|| random_block());
+static RANDOM_NONCE: LazyLock<Nonce> = LazyLock::new(|| random());
 static RANDOM_BYTES: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let num_bytes: usize = random_range(0..64);
     random_bytes(num_bytes)
@@ -150,4 +151,18 @@ pub fn mt_stream_cipher_oracle() -> (Vec<u8>, u16) {
         plaintext[i] = plaintext[i] ^ (mt.rand() as u8);
     }
     (plaintext, seed)
+}
+
+pub fn ctr_keystream_oracle(len: usize) -> Vec<u8> {
+    aes_128_ctr_keystream(len, &RANDOM_KEY, &RANDOM_NONCE)
+}
+
+pub fn ctr_edit(ciphertext: &[u8], offset: usize, newtext: &[u8]) -> Vec<u8> {
+    assert!(newtext.len() + offset <= ciphertext.len());
+    let mut edited: Vec<u8> = Vec::new();
+    edited.extend_from_slice(ciphertext);
+    let keystream = aes_128_ctr_keystream(ciphertext.len(), &RANDOM_KEY, &RANDOM_NONCE);
+    let new_ciphertext = xor(&keystream[offset..], newtext);
+    edited[offset..offset + newtext.len()].copy_from_slice(&new_ciphertext);
+    edited
 }

@@ -23,7 +23,7 @@ fn main() {
         1 => set_1(),
         2 => set_2(),
         3 => set_3(),
-        4 => unimplemented(),
+        4 => set_4(),
         5 => unimplemented(),
         6 => unimplemented(),
         7 => unimplemented(),
@@ -67,6 +67,10 @@ fn set_3() {
     set_3_problem_22();
     set_3_problem_23();
     set_3_problem_24();
+}
+
+fn set_4() {
+    set_4_problem_25();
 }
 
 fn set_1_problem_1() {
@@ -522,4 +526,20 @@ fn set_3_problem_24() {
     }
     assert!(secret_seed == found_seed);
     println!("set 3 problem 24: secret seed: {secret_seed} found seed: {found_seed}");
+}
+
+fn set_4_problem_25() {
+    let input = reqwest::blocking::get("https://cryptopals.com/static/challenge-data/25.txt")
+        .unwrap()
+        .text()
+        .unwrap();
+    let mut plaintext: Vec<u8> = Vec::new();
+    for line in input.lines() {
+        plaintext.extend_from_slice(&b64_decode(line));
+    }
+    let ciphertext = xor(&plaintext, &ctr_keystream_oracle(plaintext.len()));
+
+    let keystream = ctr_edit(&ciphertext, 0, &vec![0x0u8; ciphertext.len()]);
+    assert!(&plaintext == &xor(&ciphertext, &keystream));
+    println!("set 4 problem 25: ok");
 }
