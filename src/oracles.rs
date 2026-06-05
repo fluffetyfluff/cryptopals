@@ -218,3 +218,14 @@ pub fn ctr_decrypt_oracle(ciphertext: &[u8], nonce: Nonce) -> bool {
     let decryption = String::from_utf8_lossy(&decryption);
     decryption.contains(";admin=true;")
 }
+
+pub fn secret_prefix_mac(bytes: &[u8]) -> Sha1Digest {
+    let mut input: Vec<u8> = Vec::new();
+    input.extend_from_slice(&RANDOM_BYTES);
+    input.extend_from_slice(bytes);
+    sha_1(&input)
+}
+
+pub fn secret_prefix_mac_verifier(bytes: &[u8], mac: Sha1Digest) -> bool {
+    secret_prefix_mac(bytes) == mac
+}

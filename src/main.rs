@@ -74,6 +74,7 @@ fn set_4() {
     set_4_problem_26();
     set_4_problem_27();
     set_4_problem_28();
+    set_4_problem_29();
 }
 
 fn set_1_problem_1() {
@@ -580,4 +581,47 @@ fn set_4_problem_28() {
     let hash = hex_encode(&sha_1(b""));
     assert!(hash == "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     println!("set 4 problem 28: sha-1 hash of \"\": {0}", hash);
+}
+
+fn set_4_problem_29() {
+    let original_message =
+        b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon";
+    let mac = secret_prefix_mac(original_message);
+    assert!(secret_prefix_mac_verifier(original_message, mac));
+
+    let admin_message = b";admin=true";
+    let mut k = 999;
+    for key_length in 0..512 {
+        let ml = (key_length + original_message.len()) * 8;
+        let target_length = ml + 1 + (448 - (ml + 1) as i32).rem_euclid(512) as usize;
+        let mut tamper_message: Vec<u8> = Vec::with_capacity(target_length / 8 + 64);
+        tamper_message.extend_from_slice(original_message);
+        tamper_message.push(0x80);
+        tamper_message.resize(target_length / 8 - key_length, 0x0);
+        tamper_message.extend_from_slice(&(ml as u64).to_be_bytes());
+
+        let h0 = u32::from_be_bytes(mac[0..4].try_into().unwrap());
+        let h1 = u32::from_be_bytes(mac[4..8].try_into().unwrap());
+        let h2 = u32::from_be_bytes(mac[8..12].try_into().unwrap());
+        let h3 = u32::from_be_bytes(mac[12..16].try_into().unwrap());
+        let h4 = u32::from_be_bytes(mac[16..20].try_into().unwrap());
+        let tamper_mac = sha_1_extend(
+            admin_message,
+            tamper_message.len() + key_length,
+            h0,
+            h1,
+            h2,
+            h3,
+            h4,
+        );
+
+        tamper_message.extend_from_slice(admin_message);
+
+        if secret_prefix_mac_verifier(&tamper_message, tamper_mac) {
+            k = key_length;
+            break;
+        }
+    }
+
+    println!("set 4 problem 29: forged mac with key length: {0}", k);
 }

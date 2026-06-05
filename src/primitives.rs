@@ -216,17 +216,29 @@ pub fn pkcs_unpad(bytes: &[u8]) -> Result<Vec<u8>, ()> {
 }
 
 pub fn sha_1(bytes: &[u8]) -> Sha1Digest {
-    let mut h0 = 0x67452301u32;
-    let mut h1 = 0xEFCDAB89u32;
-    let mut h2 = 0x98BADCFEu32;
-    let mut h3 = 0x10325476u32;
-    let mut h4 = 0xC3D2E1F0u32;
-    let ml = bytes.len() * 8;
-    let target_length = ml + 1 + (448 - (ml + 1)).rem_euclid(512);
+    let h0 = 0x67452301u32;
+    let h1 = 0xEFCDAB89u32;
+    let h2 = 0x98BADCFEu32;
+    let h3 = 0x10325476u32;
+    let h4 = 0xC3D2E1F0u32;
+    sha_1_extend(bytes, 0, h0, h1, h2, h3, h4)
+}
+
+pub fn sha_1_extend(
+    bytes: &[u8],
+    prev_length: usize,
+    mut h0: u32,
+    mut h1: u32,
+    mut h2: u32,
+    mut h3: u32,
+    mut h4: u32,
+) -> Sha1Digest {
+    let ml = (prev_length + bytes.len()) * 8;
+    let target_length = ml + 1 + (448 - (ml + 1) as i32).rem_euclid(512) as usize;
     let mut preprocessed_bytes: Vec<u8> = Vec::with_capacity(target_length / 8 + 64);
     preprocessed_bytes.extend_from_slice(bytes);
     preprocessed_bytes.push(0x80);
-    preprocessed_bytes.resize(target_length / 8, 0x0);
+    preprocessed_bytes.resize(target_length / 8 - prev_length, 0x0);
     preprocessed_bytes.extend_from_slice(&(ml as u64).to_be_bytes());
 
     for chunk in preprocessed_bytes.chunks(64) {
