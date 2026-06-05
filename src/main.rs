@@ -73,6 +73,7 @@ fn set_4() {
     set_4_problem_25();
     set_4_problem_26();
     set_4_problem_27();
+    set_4_problem_28();
 }
 
 fn set_1_problem_1() {
@@ -573,4 +574,10 @@ fn set_4_problem_27() {
     let key = xor(&blocks[0], &blocks[2]);
     assert!(key == oracle_key());
     println!("set 4 problem 27: recovered key: {0}", hex_encode(&key));
+}
+
+fn set_4_problem_28() {
+    let hash = hex_encode(&sha_1(b""));
+    assert!(hash == "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    println!("set 4 problem 28: sha-1 hash of \"\": {0}", hash);
 }

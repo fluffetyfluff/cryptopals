@@ -6,6 +6,7 @@ use base64::prelude::*;
 
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
+pub type Sha1Digest = [u8; 20];
 
 pub struct Mt19937 {
     state_array: [u32; 624],
@@ -212,4 +213,78 @@ pub fn pkcs_unpad(bytes: &[u8]) -> Result<Vec<u8>, ()> {
     } else {
         Err(())
     }
+}
+
+pub fn sha_1(bytes: &[u8]) -> Sha1Digest {
+    let mut h0 = 0x67452301u32;
+    let mut h1 = 0xEFCDAB89u32;
+    let mut h2 = 0x98BADCFEu32;
+    let mut h3 = 0x10325476u32;
+    let mut h4 = 0xC3D2E1F0u32;
+    let ml = bytes.len() * 8;
+    let target_length = ml + 1 + (448 - (ml + 1)).rem_euclid(512);
+    let mut preprocessed_bytes: Vec<u8> = Vec::with_capacity(target_length / 8 + 64);
+    preprocessed_bytes.extend_from_slice(bytes);
+    preprocessed_bytes.push(0x80);
+    preprocessed_bytes.resize(target_length / 8, 0x0);
+    preprocessed_bytes.extend_from_slice(&(ml as u64).to_be_bytes());
+
+    for chunk in preprocessed_bytes.chunks(64) {
+        let mut w: Vec<u32> = Vec::with_capacity(80);
+        for i in 0..16 {
+            w.push(u32::from_be_bytes(
+                chunk[4 * i..4 * i + 4].try_into().unwrap(),
+            ));
+        }
+        for i in 16..80 {
+            w.push((w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]).rotate_left(1));
+        }
+        let mut a = h0;
+        let mut b = h1;
+        let mut c = h2;
+        let mut d = h3;
+        let mut e = h4;
+
+        for i in 0..80 {
+            let f = match i {
+                0..20 => (b & c) | (!b & d),
+                20..40 => b ^ c ^ d,
+                40..60 => (b & c) | (b & d) | (c & d),
+                60..80 => b ^ c ^ d,
+                _ => panic!("how did we get here? sha1"),
+            };
+            let k = match i {
+                0..20 => 0x5A827999u32,
+                20..40 => 0x6ED9EBA1u32,
+                40..60 => 0x8F1BBCDCu32,
+                60..80 => 0xCA62C1D6u32,
+                _ => panic!("how did we get here? sha1"),
+            };
+            let temp = a
+                .rotate_left(5)
+                .wrapping_add(f)
+                .wrapping_add(e)
+                .wrapping_add(k)
+                .wrapping_add(w[i]);
+            e = d;
+            d = c;
+            c = b.rotate_left(30);
+            b = a;
+            a = temp;
+        }
+
+        h0 = h0.wrapping_add(a);
+        h1 = h1.wrapping_add(b);
+        h2 = h2.wrapping_add(c);
+        h3 = h3.wrapping_add(d);
+        h4 = h4.wrapping_add(e);
+    }
+
+    let mut hh = [0x0; 20];
+    hh[0..4].copy_from_slice(&h0.to_be_bytes());
+    hh[4..8].copy_from_slice(&h1.to_be_bytes());
+    hh[8..12].copy_from_slice(&h2.to_be_bytes());
+    hh[12..16].copy_from_slice(&h3.to_be_bytes());
+    hh[16..20].copy_from_slice(&h4.to_be_bytes());
+    hh
 }
