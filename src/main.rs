@@ -75,6 +75,7 @@ fn set_4() {
     set_4_problem_27();
     set_4_problem_28();
     set_4_problem_29();
+    set_4_problem_30();
 }
 
 fn set_1_problem_1() {
@@ -586,8 +587,8 @@ fn set_4_problem_28() {
 fn set_4_problem_29() {
     let original_message =
         b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon";
-    let mac = secret_prefix_mac(original_message);
-    assert!(secret_prefix_mac_verifier(original_message, mac));
+    let mac = secret_prefix_sha1_mac(original_message);
+    assert!(secret_prefix_sha1_mac_verifier(original_message, mac));
 
     let admin_message = b";admin=true";
     let mut k = 999;
@@ -617,11 +618,55 @@ fn set_4_problem_29() {
 
         tamper_message.extend_from_slice(admin_message);
 
-        if secret_prefix_mac_verifier(&tamper_message, tamper_mac) {
+        if secret_prefix_sha1_mac_verifier(&tamper_message, tamper_mac) {
             k = key_length;
             break;
         }
     }
 
-    println!("set 4 problem 29: forged mac with key length: {0}", k);
+    println!("set 4 problem 29: forged sha-1 mac with key length: {0}", k);
+}
+
+fn set_4_problem_30() {
+    let hash = hex_encode(&md4(b""));
+    assert!(hash == "31d6cfe0d16ae931b73c59d7e0c089c0");
+
+    let original_message =
+        b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon";
+    let mac = secret_prefix_md4_mac(original_message);
+    assert!(secret_prefix_md4_mac_verifier(original_message, mac));
+
+    let admin_message = b";admin=true";
+    let mut k = 999;
+    for key_length in 0..512 {
+        let ml = (key_length + original_message.len()) * 8;
+        let target_length = ml + 1 + (448 - (ml + 1) as i32).rem_euclid(512) as usize;
+        let mut tamper_message: Vec<u8> = Vec::with_capacity(target_length / 8 + 64);
+        tamper_message.extend_from_slice(original_message);
+        tamper_message.push(0x80);
+        tamper_message.resize(target_length / 8 - key_length, 0x0);
+        tamper_message.extend_from_slice(&(ml as u64).to_le_bytes());
+
+        let h0 = u32::from_le_bytes(mac[0..4].try_into().unwrap());
+        let h1 = u32::from_le_bytes(mac[4..8].try_into().unwrap());
+        let h2 = u32::from_le_bytes(mac[8..12].try_into().unwrap());
+        let h3 = u32::from_le_bytes(mac[12..16].try_into().unwrap());
+        let tamper_mac = md4_extend(
+            admin_message,
+            tamper_message.len() + key_length,
+            h0,
+            h1,
+            h2,
+            h3,
+        );
+
+        tamper_message.extend_from_slice(admin_message);
+
+        if secret_prefix_md4_mac_verifier(&tamper_message, tamper_mac) {
+            k = key_length;
+            break;
+        }
+    }
+
+    println!("set 4 problem 30: forged md4 mac with key length: {0}", k);
 }

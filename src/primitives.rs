@@ -7,6 +7,7 @@ use base64::prelude::*;
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
 pub type Sha1Digest = [u8; 20];
+pub type Md4Digest = [u8; 16];
 
 pub struct Mt19937 {
     state_array: [u32; 624],
@@ -298,5 +299,133 @@ pub fn sha_1_extend(
     hh[8..12].copy_from_slice(&h2.to_be_bytes());
     hh[12..16].copy_from_slice(&h3.to_be_bytes());
     hh[16..20].copy_from_slice(&h4.to_be_bytes());
+    hh
+}
+
+pub fn md4(bytes: &[u8]) -> Md4Digest {
+    md4_extend(bytes, 0, 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476)
+}
+
+pub fn md4_extend(
+    bytes: &[u8],
+    prev_length: usize,
+    mut h0: u32,
+    mut h1: u32,
+    mut h2: u32,
+    mut h3: u32,
+) -> Md4Digest {
+    let ml = (prev_length + bytes.len()) * 8;
+    let target_length = ml + 1 + (448 - (ml + 1) as i32).rem_euclid(512) as usize;
+    let mut preprocessed_bytes: Vec<u8> = Vec::with_capacity(target_length / 8 + 64);
+    preprocessed_bytes.extend_from_slice(bytes);
+    preprocessed_bytes.push(0x80);
+    preprocessed_bytes.resize(target_length / 8 - prev_length, 0x0);
+    preprocessed_bytes.extend_from_slice(&(ml as u64).to_le_bytes());
+
+    fn f(x: u32, y: u32, z: u32) -> u32 {
+        (x & y) | (!x & z)
+    }
+
+    fn g(x: u32, y: u32, z: u32) -> u32 {
+        (x & y) | (y & z) | (x & z)
+    }
+
+    fn h(x: u32, y: u32, z: u32) -> u32 {
+        x ^ y ^ z
+    }
+
+    for chunk in preprocessed_bytes.chunks(64) {
+        let mut x: Vec<u32> = Vec::with_capacity(16);
+        for i in 0..16 {
+            x.push(u32::from_le_bytes(
+                chunk[4 * i..4 * i + 4].try_into().unwrap(),
+            ));
+        }
+
+        let mut a = h0;
+        let mut b = h1;
+        let mut c = h2;
+        let mut d = h3;
+
+        // round 1
+        a = (a.wrapping_add(f(b, c, d)).wrapping_add(x[0])).rotate_left(3);
+        d = (d.wrapping_add(f(a, b, c)).wrapping_add(x[1])).rotate_left(7);
+        c = (c.wrapping_add(f(d, a, b)).wrapping_add(x[2])).rotate_left(11);
+        b = (b.wrapping_add(f(c, d, a)).wrapping_add(x[3])).rotate_left(19);
+        a = (a.wrapping_add(f(b, c, d)).wrapping_add(x[4])).rotate_left(3);
+        d = (d.wrapping_add(f(a, b, c)).wrapping_add(x[5])).rotate_left(7);
+        c = (c.wrapping_add(f(d, a, b)).wrapping_add(x[6])).rotate_left(11);
+        b = (b.wrapping_add(f(c, d, a)).wrapping_add(x[7])).rotate_left(19);
+        a = (a.wrapping_add(f(b, c, d)).wrapping_add(x[8])).rotate_left(3);
+        d = (d.wrapping_add(f(a, b, c)).wrapping_add(x[9])).rotate_left(7);
+        c = (c.wrapping_add(f(d, a, b)).wrapping_add(x[10])).rotate_left(11);
+        b = (b.wrapping_add(f(c, d, a)).wrapping_add(x[11])).rotate_left(19);
+        a = (a.wrapping_add(f(b, c, d)).wrapping_add(x[12])).rotate_left(3);
+        d = (d.wrapping_add(f(a, b, c)).wrapping_add(x[13])).rotate_left(7);
+        c = (c.wrapping_add(f(d, a, b)).wrapping_add(x[14])).rotate_left(11);
+        b = (b.wrapping_add(f(c, d, a)).wrapping_add(x[15])).rotate_left(19);
+
+        // round 2
+        a = (a.wrapping_add(g(b, c, d).wrapping_add(x[0]).wrapping_add(0x5A827999))).rotate_left(3);
+        d = (d.wrapping_add(g(a, b, c).wrapping_add(x[4]).wrapping_add(0x5A827999))).rotate_left(5);
+        c = (c.wrapping_add(g(d, a, b).wrapping_add(x[8]).wrapping_add(0x5A827999))).rotate_left(9);
+        b = (b.wrapping_add(g(c, d, a).wrapping_add(x[12]).wrapping_add(0x5A827999)))
+            .rotate_left(13);
+        a = (a.wrapping_add(g(b, c, d).wrapping_add(x[1]).wrapping_add(0x5A827999))).rotate_left(3);
+        d = (d.wrapping_add(g(a, b, c).wrapping_add(x[5]).wrapping_add(0x5A827999))).rotate_left(5);
+        c = (c.wrapping_add(g(d, a, b).wrapping_add(x[9]).wrapping_add(0x5A827999))).rotate_left(9);
+        b = (b.wrapping_add(g(c, d, a).wrapping_add(x[13]).wrapping_add(0x5A827999)))
+            .rotate_left(13);
+        a = (a.wrapping_add(g(b, c, d).wrapping_add(x[2]).wrapping_add(0x5A827999))).rotate_left(3);
+        d = (d.wrapping_add(g(a, b, c).wrapping_add(x[6]).wrapping_add(0x5A827999))).rotate_left(5);
+        c = (c.wrapping_add(g(d, a, b).wrapping_add(x[10]).wrapping_add(0x5A827999)))
+            .rotate_left(9);
+        b = (b.wrapping_add(g(c, d, a).wrapping_add(x[14]).wrapping_add(0x5A827999)))
+            .rotate_left(13);
+        a = (a.wrapping_add(g(b, c, d).wrapping_add(x[3]).wrapping_add(0x5A827999))).rotate_left(3);
+        d = (d.wrapping_add(g(a, b, c).wrapping_add(x[7]).wrapping_add(0x5A827999))).rotate_left(5);
+        c = (c.wrapping_add(g(d, a, b).wrapping_add(x[11]).wrapping_add(0x5A827999)))
+            .rotate_left(9);
+        b = (b.wrapping_add(g(c, d, a).wrapping_add(x[15]).wrapping_add(0x5A827999)))
+            .rotate_left(13);
+
+        // round 3
+        a = (a.wrapping_add(h(b, c, d).wrapping_add(x[0]).wrapping_add(0x6ED9EBA1))).rotate_left(3);
+        d = (d.wrapping_add(h(a, b, c).wrapping_add(x[8]).wrapping_add(0x6ED9EBA1))).rotate_left(9);
+        c = (c.wrapping_add(h(d, a, b).wrapping_add(x[4]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(11);
+        b = (b.wrapping_add(h(c, d, a).wrapping_add(x[12]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(15);
+        a = (a.wrapping_add(h(b, c, d).wrapping_add(x[2]).wrapping_add(0x6ED9EBA1))).rotate_left(3);
+        d = (d.wrapping_add(h(a, b, c).wrapping_add(x[10]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(9);
+        c = (c.wrapping_add(h(d, a, b).wrapping_add(x[6]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(11);
+        b = (b.wrapping_add(h(c, d, a).wrapping_add(x[14]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(15);
+        a = (a.wrapping_add(h(b, c, d).wrapping_add(x[1]).wrapping_add(0x6ED9EBA1))).rotate_left(3);
+        d = (d.wrapping_add(h(a, b, c).wrapping_add(x[9]).wrapping_add(0x6ED9EBA1))).rotate_left(9);
+        c = (c.wrapping_add(h(d, a, b).wrapping_add(x[5]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(11);
+        b = (b.wrapping_add(h(c, d, a).wrapping_add(x[13]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(15);
+        a = (a.wrapping_add(h(b, c, d).wrapping_add(x[3]).wrapping_add(0x6ED9EBA1))).rotate_left(3);
+        d = (d.wrapping_add(h(a, b, c).wrapping_add(x[11]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(9);
+        c = (c.wrapping_add(h(d, a, b).wrapping_add(x[7]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(11);
+        b = (b.wrapping_add(h(c, d, a).wrapping_add(x[15]).wrapping_add(0x6ED9EBA1)))
+            .rotate_left(15);
+
+        h0 = h0.wrapping_add(a);
+        h1 = h1.wrapping_add(b);
+        h2 = h2.wrapping_add(c);
+        h3 = h3.wrapping_add(d);
+    }
+    let mut hh = [0x0; 16];
+    hh[0..4].copy_from_slice(&h0.to_le_bytes());
+    hh[4..8].copy_from_slice(&h1.to_le_bytes());
+    hh[8..12].copy_from_slice(&h2.to_le_bytes());
+    hh[12..16].copy_from_slice(&h3.to_le_bytes());
     hh
 }
