@@ -5,6 +5,8 @@ use cryptopals::primitives::*;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::Duration;
+use std::time::Instant;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -76,6 +78,7 @@ fn set_4() {
     set_4_problem_28();
     set_4_problem_29();
     set_4_problem_30();
+    set_4_problem_31();
 }
 
 fn set_1_problem_1() {
@@ -669,4 +672,67 @@ fn set_4_problem_30() {
     }
 
     println!("set 4 problem 30: forged md4 mac with key length: {0}", k);
+}
+
+fn set_4_problem_31() {
+    let client = reqwest::blocking::Client::new();
+    let request = client
+        .get("http://127.0.0.1:8080/test?file=foo&signature=a")
+        .send();
+    match request {
+        Ok(_) => (),
+        Err(error) => {
+            if error.is_connect() {
+                println!("set 4 problem 31: did not reach server, skipping");
+                return;
+            }
+        }
+    }
+
+    fn time(client: &reqwest::blocking::Client, signature: &[u8]) -> Result<Duration, Duration> {
+        let now = Instant::now();
+        let url = format!(
+            "http://127.0.0.1:8080/test?file=foo&signature={0}",
+            str::from_utf8(signature).unwrap()
+        );
+        let result = client.get(url).send();
+        let duration = now.elapsed();
+        let result = result.unwrap();
+        if result.status().is_success() {
+            Ok(duration)
+        } else {
+            Err(duration)
+        }
+    }
+
+    let mut signature = vec![b'0'; 40];
+    'outer: for i in 0..40 {
+        let mut longest = Duration::from_secs(0);
+        let mut longest_char = b'0';
+        for byte in b"0123456789abcdef" {
+            signature[i] = *byte;
+            match time(&client, &signature) {
+                Ok(_) => break 'outer,
+                Err(t) => {
+                    if t > longest {
+                        longest = t;
+                        longest_char = *byte;
+                    }
+                }
+            }
+        }
+        signature[i] = longest_char;
+    }
+
+    let url = format!(
+        "http://127.0.0.1:8080/test?file=foo&signature={0}",
+        str::from_utf8(&signature).unwrap()
+    );
+    let response = client.get(url).send().unwrap();
+    assert!(response.status().is_success());
+
+    println!(
+        "set 4 problem 31: recovered signature {0}",
+        str::from_utf8(&signature).unwrap()
+    );
 }
