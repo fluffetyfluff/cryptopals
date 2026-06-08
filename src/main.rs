@@ -26,7 +26,7 @@ fn main() {
         2 => set_2(),
         3 => set_3(),
         4 => set_4(),
-        5 => set_5(),
+        5 => unimplemented(),
         6 => unimplemented(),
         7 => unimplemented(),
         8 => unimplemented(),
@@ -79,9 +79,6 @@ fn set_4() {
     set_4_problem_29();
     set_4_problem_30();
     set_4_problem_31();
-}
-
-fn set_5() {
     set_4_problem_32();
 }
 
