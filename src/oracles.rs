@@ -1,4 +1,5 @@
 use crate::primitives::*;
+use crypto_bigint::{NonZero, RandomMod, U2048};
 use itertools::Itertools;
 use rand::seq::IteratorRandom;
 use rand::{random, random_bool, random_range, rng};
@@ -239,4 +240,9 @@ pub fn secret_prefix_md4_mac(bytes: &[u8]) -> Md4Digest {
 
 pub fn secret_prefix_md4_mac_verifier(bytes: &[u8], mac: Md4Digest) -> bool {
     secret_prefix_md4_mac(bytes) == mac
+}
+
+pub fn random_biguint(n: U2048) -> U2048 {
+    let modulus = NonZero::new(n).unwrap();
+    U2048::random_mod_vartime(&mut rng(), &modulus)
 }

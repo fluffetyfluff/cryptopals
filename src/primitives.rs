@@ -1,8 +1,12 @@
 use aes::{
     Aes128,
-    cipher::{Array, BlockCipherDecrypt, BlockCipherEncrypt, KeyInit},
+    cipher::{Array, BlockCipherDecrypt, BlockCipherEncrypt, KeyInit, consts::U40},
 };
 use base64::prelude::*;
+use crypto_bigint::{
+    OddUint, U2048,
+    modular::{FixedMontyForm, FixedMontyParams},
+};
 
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
@@ -428,4 +432,19 @@ pub fn md4_extend(
     hh[8..12].copy_from_slice(&h2.to_le_bytes());
     hh[12..16].copy_from_slice(&h3.to_le_bytes());
     hh
+}
+
+pub fn bigint(i: u64) -> U2048 {
+    U2048::from(i)
+}
+
+pub fn bigint_hex(i: &str) -> U2048 {
+    U2048::from_be_hex(&format!("{:0>512}", i))
+}
+
+pub fn modexp(base: U2048, pow: U2048, modulus: U2048) -> U2048 {
+    let modulus = OddUint::new(modulus).unwrap();
+    let params = FixedMontyParams::new(modulus);
+    let base = FixedMontyForm::new(&base, &params);
+    base.pow(&pow).retrieve()
 }
