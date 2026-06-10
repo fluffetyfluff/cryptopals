@@ -2,6 +2,7 @@ use clap::Parser;
 use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
+use cryptopals::protocols::*;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -84,6 +85,7 @@ fn set_4() {
 
 fn set_5() {
     set_5_problem_33();
+    set_5_problem_34();
 }
 
 fn set_1_problem_1() {
@@ -835,4 +837,79 @@ fn set_5_problem_33() {
     assert!(modexp(ga, b, p) == modexp(gb, a, p));
 
     println!("set 5 problem 33: ok");
+}
+
+fn set_5_problem_34() {
+    let msg = b"YELLOW SUBMARINE";
+    let p = bigint_hex(
+        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
+        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
+        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
+        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
+        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
+        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
+        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
+        fffffffffffff",
+    );
+    let g = bigint(2);
+    let a = random_biguint(p);
+    let ga = modexp(g, a, p);
+
+    let (server, gb) = DhEchoServer::new(p, g, ga);
+    let s = modexp(gb, a, p);
+
+    let key: [u8; 16] = sha_1(&s.to_be_bytes())[..16].try_into().unwrap();
+    let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &key, &random_block());
+    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let dec = aes_128_cbc_decrypt(&new_ct, &key, &new_iv);
+    assert!(dec == msg);
+
+    // mitm parameter injection
+    let a = random_biguint(p);
+    let (server, _) = DhEchoServer::new(p, g, p);
+    let gb = p;
+    let s = modexp(gb, a, p);
+
+    let key: [u8; 16] = sha_1(&s.to_be_bytes())[..16].try_into().unwrap();
+    let m_key: [u8; 16] = sha_1(&bigint(0).to_be_bytes())[..16].try_into().unwrap();
+
+    let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &key, &random_block());
+    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let dec = aes_128_cbc_decrypt(&new_ct, &key, &new_iv);
+    let m_dec = aes_128_cbc_decrypt(&new_ct, &m_key, &new_iv);
+    assert!(dec == m_dec);
+
+    println!("set 5 problem 34: ok");
+}
+
+fn set_5_problem_35() {
+    let msg = b"YELLOW SUBMARINE";
+    let p = bigint_hex(
+        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
+        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
+        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
+        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
+        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
+        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
+        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
+        fffffffffffff",
+    );
+    let g = bigint(2);
+
+    // g = 1
+    let a = random_biguint(p);
+    let ga = modexp(g, a, p);
+
+    let (server, gb) = DhEchoServer::new(p, bigint(1), ga);
+    let a_s = modexp(gb, a, p);
+    let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
+    let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
+    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let a_dec = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
+
+    let m_key = sha_1(&ga.to_be_bytes())[..16].try_into().unwrap();
+    let m_dec = aes_128_cbc_decrypt(&new_ct, &m_key, &new_iv);
+    assert!(a_dec == m_dec);
+
+    println!("set 5 problem 35: ok");
 }
