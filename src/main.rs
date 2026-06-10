@@ -1,4 +1,5 @@
 use clap::Parser;
+use crypto_bigint::NonZero;
 use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
@@ -86,6 +87,7 @@ fn set_4() {
 fn set_5() {
     set_5_problem_33();
     set_5_problem_34();
+    set_5_problem_35();
 }
 
 fn set_1_problem_1() {
@@ -877,6 +879,7 @@ fn set_5_problem_34() {
     let (new_ct, new_iv) = server.echo(&ciphertext, iv);
     let dec = aes_128_cbc_decrypt(&new_ct, &key, &new_iv);
     let m_dec = aes_128_cbc_decrypt(&new_ct, &m_key, &new_iv);
+    assert!(dec == msg);
     assert!(dec == m_dec);
 
     println!("set 5 problem 34: ok");
@@ -894,22 +897,64 @@ fn set_5_problem_35() {
         bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
         fffffffffffff",
     );
-    let g = bigint(2);
 
     // g = 1
+    // mitm attacker replaces g and g^a with 1, then runs rest of protocol as normal
     let a = random_biguint(p);
-    let ga = modexp(g, a, p);
 
-    let (server, gb) = DhEchoServer::new(p, bigint(1), ga);
+    let (server, gb) = DhEchoServer::new(p, bigint(1), bigint(1));
     let a_s = modexp(gb, a, p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
     let (new_ct, new_iv) = server.echo(&ciphertext, iv);
     let a_dec = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
 
-    let m_key = sha_1(&ga.to_be_bytes())[..16].try_into().unwrap();
+    let m_key = sha_1(&bigint(1).to_be_bytes())[..16].try_into().unwrap();
     let m_dec = aes_128_cbc_decrypt(&new_ct, &m_key, &new_iv);
+    assert!(a_dec == msg);
     assert!(a_dec == m_dec);
+
+    // g = p
+    // mitm attacker replaces g and g^a with p === 0, then runs rest of protocol
+    let a = random_biguint(p);
+
+    let (server, gb) = DhEchoServer::new(p, p, p);
+    let a_s = modexp(gb, a, p);
+    let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
+    let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
+    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let a_dec = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
+
+    let m_key = sha_1(&bigint(0).to_be_bytes())[..16].try_into().unwrap();
+    let m_dec = aes_128_cbc_decrypt(&new_ct, &m_key, &new_iv);
+    assert!(a_dec == msg);
+    assert!(a_dec == m_dec);
+
+    // g = p - 1 === -1 mod p -> try both -1 and 1
+    let a = random_biguint(p);
+    let p1 = p.sub_mod(&bigint(1), &NonZero::new(p).unwrap());
+
+    let (server, gb) = DhEchoServer::new(p, p1, bigint(1));
+    let (_, gb2) = DhEchoServer::new(p, p1, p1);
+
+    let a_s = modexp(gb, a, p);
+    let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
+    let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
+    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let a_dec = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
+
+    let a_s = modexp(gb2, a, p);
+    let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
+    let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
+    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let a_dec2 = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
+
+    let m_key = sha_1(&bigint(1).to_be_bytes())[..16].try_into().unwrap();
+    let m_dec = aes_128_cbc_decrypt(&new_ct, &m_key, &new_iv);
+    let m_key2 = sha_1(&p1.to_be_bytes())[..16].try_into().unwrap();
+    let m_dec2 = aes_128_cbc_decrypt(&new_ct, &m_key2, &new_iv);
+    assert!((a_dec == msg) || (a_dec2 == msg));
+    assert!((m_dec == msg) || (m_dec2 == msg));
 
     println!("set 5 problem 35: ok");
 }
