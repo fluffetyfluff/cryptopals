@@ -4,6 +4,7 @@ use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use cryptopals::protocols::*;
+use openssl::sha::sha256;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -88,6 +89,7 @@ fn set_5() {
     set_5_problem_33();
     set_5_problem_34();
     set_5_problem_35();
+    set_5_problem_36();
 }
 
 fn set_1_problem_1() {
@@ -957,4 +959,43 @@ fn set_5_problem_35() {
     assert!((m_dec == msg) || (m_dec2 == msg));
 
     println!("set 5 problem 35: ok");
+}
+
+fn set_5_problem_36() {
+    let n = bigint_hex(
+        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
+        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
+        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
+        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
+        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
+        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
+        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
+        fffffffffffff",
+    );
+    let nz = NonZero::new(n).unwrap();
+    let g = bigint(2);
+    let k = bigint(3);
+    let mut server = SrpServer::new(n, g, k);
+
+    let i = b"alice@cryptopals.com";
+    let p = b"password";
+    server.register_user(i, p);
+
+    let a = random_biguint(n);
+    let ga = modexp(g, a, n);
+    let (salt, gb, key_b) = server.handshake(i, ga);
+
+    let uh = sha256(&[ga.to_be_bytes().as_slice(), gb.to_be_bytes().as_slice()].concat());
+    let u = bigint_hex(&hex_encode(&uh));
+    let xh = sha256(&[&salt, p as &[u8]].concat());
+    let x = bigint_hex(&hex_encode(&xh));
+
+    let kgx = k.mul_mod(&modexp(g, x, n), &nz);
+    let gbkgx = gb.sub_mod(&kgx, &nz);
+    let aux = a.add_mod(&u.mul_mod(&x, &nz), &nz);
+    let s = modexp(gbkgx, aux, n);
+    let key_a = sha256(s.to_be_bytes().as_slice());
+
+    assert!(key_a == key_b);
+    println!("set 5 problem 36: ok");
 }

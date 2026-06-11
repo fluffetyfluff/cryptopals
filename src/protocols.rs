@@ -1,4 +1,7 @@
-use crypto_bigint::U2048;
+use std::collections::HashMap;
+
+use crypto_bigint::{NonZero, U2048};
+use openssl::sha::sha256;
 
 use crate::{oracles::*, primitives::*};
 
@@ -20,5 +23,49 @@ impl DhEchoServer {
         let plaintext = aes_128_cbc_decrypt(message, &self.key, &iv);
         let new_iv = random_block();
         aes_128_cbc_encrypt(&plaintext, &self.key, &new_iv)
+    }
+}
+
+pub struct SrpServer {
+    n: U2048,
+    g: U2048,
+    k: U2048,
+    users: HashMap<Vec<u8>, (Block, U2048)>,
+}
+
+impl SrpServer {
+    pub fn new(n: U2048, g: U2048, k: U2048) -> Self {
+        SrpServer {
+            n,
+            g,
+            k,
+            users: HashMap::new(),
+        }
+    }
+
+    pub fn register_user(&mut self, i: &[u8], p: &[u8]) {
+        let salt = random_block();
+        let xh = sha256(&[&salt, p].concat());
+        let x = bigint_hex(&hex_encode(&xh));
+        let v = modexp(self.g, x, self.n);
+        self.users.insert(i.to_vec(), (salt, v));
+    }
+
+    pub fn handshake(&mut self, i: &[u8], ga: U2048) -> (Block, U2048, [u8; 32]) {
+        let (salt, v) = *self.users.get(&i.to_vec()).unwrap();
+        let b = random_biguint(self.n);
+        let nz = NonZero::new(self.n).unwrap();
+
+        let kv = self.k.mul_mod(&v, &nz);
+        let gb = kv.add_mod(&modexp(self.g, b, self.n), &nz);
+        let uh = sha256(&[ga.to_be_bytes().as_slice(), gb.to_be_bytes().as_slice()].concat());
+        let u = bigint_hex(&hex_encode(&uh));
+
+        let vu = modexp(v, u, self.n);
+        let gavu = ga.mul_mod(&vu, &nz);
+        let s = modexp(gavu, b, self.n);
+        let key = sha256(s.to_be_bytes().as_slice());
+
+        (salt, gb, key)
     }
 }
