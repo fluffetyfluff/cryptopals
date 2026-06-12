@@ -69,3 +69,32 @@ impl SrpServer {
         (salt, gb, key)
     }
 }
+
+pub struct SimpleSrpServer {
+    n: U2048,
+    g: U2048,
+    v: U2048,
+    salt: Vec<u8>,
+}
+
+impl SimpleSrpServer {
+    pub fn new(n: U2048, g: U2048, p: &[u8]) -> Self {
+        let salt = random_bytes(16);
+        let xh = sha256(&[&salt, p].concat());
+        let x = bigint_hex(&hex_encode(&xh));
+        let v = modexp(g, x, n);
+        SimpleSrpServer { n, g, v, salt }
+    }
+
+    pub fn handshake(&self, ga: U2048) -> (Vec<u8>, U2048, U2048, [u8; 32]) {
+        let nz = NonZero::new(self.n).unwrap();
+        let u = bigint_hex(&hex_encode(&random_bytes(16)));
+        let b = random_biguint(self.n);
+        let gb = modexp(self.g, b, self.n);
+        let vu = modexp(self.v, u, self.n);
+        let gavu = ga.mul_mod(&vu, &nz);
+        let s = modexp(gavu, b, self.n);
+        let key = sha256(s.to_be_bytes().as_slice());
+        (self.salt.clone(), gb, u, key)
+    }
+}

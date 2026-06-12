@@ -4,7 +4,9 @@ use cryptopals::attacks::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use cryptopals::protocols::*;
+use itertools::iproduct;
 use openssl::sha::sha256;
+use rand::random_range;
 use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -91,6 +93,7 @@ fn set_5() {
     set_5_problem_35();
     set_5_problem_36();
     set_5_problem_37();
+    set_5_problem_38();
 }
 
 fn set_1_problem_1() {
@@ -1026,4 +1029,73 @@ fn set_5_problem_37() {
 
     assert!(key_a == key_b);
     println!("set 5 problem 37: ok");
+}
+
+fn set_5_problem_38() {
+    let n = bigint_hex(
+        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
+        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
+        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
+        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
+        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
+        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
+        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
+        fffffffffffff",
+    );
+    let nz = NonZero::new(n).unwrap();
+    let g = bigint(2);
+    let p = b"YELLOW SUBMARINE";
+
+    let server = SimpleSrpServer::new(n, g, p);
+    let a = random_biguint(n);
+    let ga = modexp(g, a, n);
+    let (salt, gb, u, s_key) = server.handshake(ga);
+    let xh = sha256(&[&salt, p as &[u8]].concat());
+    let x = bigint_hex(&hex_encode(&xh));
+    let ux = u.mul_mod(&x, &nz);
+    let aux = a.add_mod(&ux, &nz);
+    let s = modexp(gb, aux, n);
+    let a_key = sha256(s.to_be_bytes().as_slice());
+    assert!(a_key == s_key);
+
+    let adjectives: [&[u8]; 4] = [b"YELLOW ", b"ORANGE ", b"PURPLE ", b"BRONZE "];
+    let objects: [&[u8]; 4] = [b"SUBMARINE", b"VEGETABLE", b"SATELLITE", b"COOKWARE"];
+    let p = [
+        adjectives[random_range(0..adjectives.len())],
+        objects[random_range(0..objects.len())],
+    ]
+    .concat();
+
+    let a = random_biguint(n);
+    // simulate mitm values - no need to call server
+    let salt = b"";
+    let gb = g;
+    let u = bigint(1);
+    let xh = sha256(&[salt as &[u8], &p].concat());
+    let x = bigint_hex(&hex_encode(&xh));
+    let ux = u.mul_mod(&x, &nz);
+    let aux = a.add_mod(&ux, &nz);
+    let s = modexp(gb, aux, n);
+    let a_key = sha256(s.to_be_bytes().as_slice());
+
+    // mitm attacker has ga
+    let ga = modexp(g, a, n);
+    let product =
+        iproduct!(adjectives.iter(), objects.iter()).map(|(&adj, &obj)| [adj, obj].concat());
+    for p_guess in product {
+        let xh = sha256(&p_guess);
+        let x = bigint_hex(&hex_encode(&xh));
+        let gx = modexp(g, x, n);
+        let s = ga.mul_mod(&gx, &nz);
+        let key_guess = sha256(s.to_be_bytes().as_slice());
+        if key_guess == a_key {
+            println!(
+                "set 5 problem 38: recovered password {0}",
+                String::from_utf8_lossy(&p_guess)
+            );
+            return;
+        }
+    }
+
+    panic!("set 5 problem 38: not ok");
 }
