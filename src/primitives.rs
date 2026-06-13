@@ -4,9 +4,11 @@ use aes::{
 };
 use base64::prelude::*;
 use crypto_bigint::{
-    OddUint, U2048,
+    NonZero, OddUint, U2048,
     modular::{FixedMontyForm, FixedMontyParams},
 };
+use crypto_primes::{Flavor, random_prime};
+use rand::rng;
 
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
@@ -447,4 +449,39 @@ pub fn modexp(base: U2048, pow: U2048, modulus: U2048) -> U2048 {
     let params = FixedMontyParams::new(modulus);
     let base = FixedMontyForm::new(&base, &params);
     base.pow(&pow).retrieve()
+}
+
+pub fn modinv(a: U2048, modulus: U2048) -> U2048 {
+    let nz = NonZero::new(modulus).unwrap();
+    let mut t = bigint(0);
+    let mut newt = bigint(1);
+    let mut r = modulus;
+    let mut newr = a;
+
+    while let Some(newr_nz) = NonZero::new(newr).into_option() {
+        let quotient = r.div_rem(&newr_nz).0;
+        (t, newt) = (newt, t.sub_mod(&quotient.wrapping_mul(&newt), &nz));
+        (r, newr) = (newr, r.sub_mod(&quotient.wrapping_mul(&newr), &nz));
+    }
+
+    t
+}
+
+pub fn rsa_keygen() -> (U2048, U2048, U2048) {
+    let mut rng = rng();
+    let p: U2048 = random_prime(&mut rng, Flavor::Any, 1023);
+    let q: U2048 = random_prime(&mut rng, Flavor::Any, 1023);
+    let n = p.wrapping_mul(&q);
+    let et = (p.wrapping_sub(&bigint(1))).wrapping_mul(&q.wrapping_sub(&bigint(1)));
+    let e = bigint(3);
+    let d = modinv(e, et);
+    (e, d, n)
+}
+
+pub fn rsa_encrypt(e: U2048, n: U2048, m: U2048) -> U2048 {
+    modexp(m, e, n)
+}
+
+pub fn rsa_decrypt(d: U2048, n: U2048, c: U2048) -> U2048 {
+    modexp(c, d, n)
 }

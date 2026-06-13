@@ -94,6 +94,7 @@ fn set_5() {
     set_5_problem_36();
     set_5_problem_37();
     set_5_problem_38();
+    set_5_problem_39();
 }
 
 fn set_1_problem_1() {
@@ -1098,4 +1099,13 @@ fn set_5_problem_38() {
     }
 
     panic!("set 5 problem 38: not ok");
+}
+
+fn set_5_problem_39() {
+    assert!(modinv(bigint(17), bigint(3120)) == bigint(2753));
+    let (e, d, n) = rsa_keygen();
+    let m = random_biguint(n);
+    assert!(rsa_decrypt(d, n, rsa_encrypt(e, n, m)).to_be_bytes() == m.to_be_bytes());
+
+    println!("set 5 problem 39: ok");
 }

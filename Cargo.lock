@@ -306,6 +306,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-primes"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3633a51a39c69ebbaa4feaa694bd83d241e4093901c84a0963b19d9bb3f0cf8f"
+dependencies = [
+ "crypto-bigint",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "cryptopals"
 version = "0.1.0"
 dependencies = [
@@ -313,6 +323,7 @@ dependencies = [
  "base64",
  "clap",
  "crypto-bigint",
+ "crypto-primes",
  "hex",
  "itertools",
  "openssl",
