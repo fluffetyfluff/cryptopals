@@ -451,7 +451,7 @@ pub fn modexp(base: U2048, pow: U2048, modulus: U2048) -> U2048 {
     base.pow(&pow).retrieve()
 }
 
-pub fn modinv(a: U2048, modulus: U2048) -> U2048 {
+pub fn modinv(a: U2048, modulus: U2048) -> Result<U2048, ()> {
     let nz = NonZero::new(modulus).unwrap();
     let mut t = bigint(0);
     let mut newt = bigint(1);
@@ -460,22 +460,31 @@ pub fn modinv(a: U2048, modulus: U2048) -> U2048 {
 
     while let Some(newr_nz) = NonZero::new(newr).into_option() {
         let quotient = r.div_rem(&newr_nz).0;
-        (t, newt) = (newt, t.sub_mod(&quotient.wrapping_mul(&newt), &nz));
+        (t, newt) = (newt, t.sub_mod(&quotient.mul_mod(&newt, &nz), &nz));
         (r, newr) = (newr, r.sub_mod(&quotient.wrapping_mul(&newr), &nz));
     }
 
-    t
+    if !(r > bigint(1)) { Ok(t) } else { Err(()) }
 }
 
 pub fn rsa_keygen() -> (U2048, U2048, U2048) {
     let mut rng = rng();
-    let p: U2048 = random_prime(&mut rng, Flavor::Any, 1023);
-    let q: U2048 = random_prime(&mut rng, Flavor::Any, 1023);
-    let n = p.wrapping_mul(&q);
-    let et = (p.wrapping_sub(&bigint(1))).wrapping_mul(&q.wrapping_sub(&bigint(1)));
-    let e = bigint(3);
-    let d = modinv(e, et);
-    (e, d, n)
+    let mut d;
+    let mut e;
+    let mut n;
+
+    loop {
+        let p: U2048 = random_prime(&mut rng, Flavor::Any, 1024);
+        let q: U2048 = random_prime(&mut rng, Flavor::Any, 1024);
+        n = p.wrapping_mul(&q);
+        let et = (p.wrapping_sub(&bigint(1))).wrapping_mul(&q.wrapping_sub(&bigint(1)));
+        e = bigint(3);
+        d = modinv(e, et);
+        if d.is_ok() {
+            break;
+        }
+    }
+    (e, d.unwrap(), n)
 }
 
 pub fn rsa_encrypt(e: U2048, n: U2048, m: U2048) -> U2048 {

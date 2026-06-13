@@ -1102,7 +1102,7 @@ fn set_5_problem_38() {
 }
 
 fn set_5_problem_39() {
-    assert!(modinv(bigint(17), bigint(3120)) == bigint(2753));
+    assert!(modinv(bigint(17), bigint(3120)).unwrap() == bigint(2753));
     let (e, d, n) = rsa_keygen();
     let m = random_biguint(n);
     assert!(rsa_decrypt(d, n, rsa_encrypt(e, n, m)).to_be_bytes() == m.to_be_bytes());
