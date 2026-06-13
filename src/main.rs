@@ -942,7 +942,7 @@ fn set_5_problem_35() {
     let p1 = p.sub_mod(&bigint(1), &NonZero::new(p).unwrap());
 
     let (server, gb) = DhEchoServer::new(p, p1, bigint(1));
-    let (_, gb2) = DhEchoServer::new(p, p1, p1);
+    let (server2, gb2) = DhEchoServer::new(p, p1, p1);
 
     let a_s = modexp(gb, a, p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
@@ -953,7 +953,7 @@ fn set_5_problem_35() {
     let a_s = modexp(gb2, a, p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
-    let (new_ct, new_iv) = server.echo(&ciphertext, iv);
+    let (new_ct, new_iv) = server2.echo(&ciphertext, iv);
     let a_dec2 = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
 
     let m_key = sha_1(&bigint(1).to_be_bytes())[..16].try_into().unwrap();
