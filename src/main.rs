@@ -820,52 +820,34 @@ fn set_4_problem_32() {
 }
 
 fn set_5_problem_33() {
-    let p = bigint(37);
+    let p = odd_bigint(37);
     let g = bigint(5);
-    let a = random_biguint(p);
-    let b = random_biguint(p);
-    let ga = modexp(g, a, p);
-    let gb = modexp(g, b, p);
-    assert!(modexp(ga, b, p) == modexp(gb, a, p));
+    let a = random_biguint(p.as_nz_ref());
+    let b = random_biguint(p.as_nz_ref());
+    let ga = modexp(&g, &a, &p);
+    let gb = modexp(&g, &b, &p);
+    assert!(modexp(&ga, &b, &p) == modexp(&gb, &a, &p));
 
-    let p = bigint_hex(
-        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
-        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
-        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
-        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
-        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
-        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
-        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
-        fffffffffffff",
-    );
+    let p = nist_prime();
     let g = bigint(2);
-    let a = random_biguint(p);
-    let b = random_biguint(p);
-    let ga = modexp(g, a, p);
-    let gb = modexp(g, b, p);
-    assert!(modexp(ga, b, p) == modexp(gb, a, p));
+    let a = random_biguint(p.as_nz_ref());
+    let b = random_biguint(p.as_nz_ref());
+    let ga = modexp(&g, &a, &p);
+    let gb = modexp(&g, &b, &p);
+    assert!(modexp(&ga, &b, &p) == modexp(&gb, &a, &p));
 
     println!("set 5 problem 33: ok");
 }
 
 fn set_5_problem_34() {
     let msg = b"YELLOW SUBMARINE";
-    let p = bigint_hex(
-        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
-        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
-        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
-        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
-        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
-        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
-        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
-        fffffffffffff",
-    );
+    let p = nist_prime();
     let g = bigint(2);
-    let a = random_biguint(p);
-    let ga = modexp(g, a, p);
+    let a = random_biguint(p.as_nz_ref());
+    let ga = modexp(&g, &a, &p);
 
-    let (server, gb) = DhEchoServer::new(p, g, ga);
-    let s = modexp(gb, a, p);
+    let (server, gb) = DhEchoServer::new(&p, &g, &ga);
+    let s = modexp(&gb, &a, &p);
 
     let key: [u8; 16] = sha_1(&s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &key, &random_block());
@@ -874,10 +856,10 @@ fn set_5_problem_34() {
     assert!(dec == msg);
 
     // mitm parameter injection
-    let a = random_biguint(p);
-    let (server, _) = DhEchoServer::new(p, g, p);
+    let a = random_biguint(p.as_nz_ref());
+    let (server, _) = DhEchoServer::new(&p, &g, &p);
     let gb = p;
-    let s = modexp(gb, a, p);
+    let s = modexp(&gb, &a, &p);
 
     let key: [u8; 16] = sha_1(&s.to_be_bytes())[..16].try_into().unwrap();
     let m_key: [u8; 16] = sha_1(&bigint(0).to_be_bytes())[..16].try_into().unwrap();
@@ -894,23 +876,14 @@ fn set_5_problem_34() {
 
 fn set_5_problem_35() {
     let msg = b"YELLOW SUBMARINE";
-    let p = bigint_hex(
-        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
-        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
-        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
-        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
-        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
-        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
-        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
-        fffffffffffff",
-    );
+    let p = nist_prime();
 
     // g = 1
     // mitm attacker replaces g and g^a with 1, then runs rest of protocol as normal
-    let a = random_biguint(p);
+    let a = random_biguint(p.as_nz_ref());
 
-    let (server, gb) = DhEchoServer::new(p, bigint(1), bigint(1));
-    let a_s = modexp(gb, a, p);
+    let (server, gb) = DhEchoServer::new(&p, &bigint(1), &bigint(1));
+    let a_s = modexp(&gb, &a, &p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
     let (new_ct, new_iv) = server.echo(&ciphertext, iv);
@@ -923,10 +896,10 @@ fn set_5_problem_35() {
 
     // g = p
     // mitm attacker replaces g and g^a with p === 0, then runs rest of protocol
-    let a = random_biguint(p);
+    let a = random_biguint(p.as_nz_ref());
 
-    let (server, gb) = DhEchoServer::new(p, p, p);
-    let a_s = modexp(gb, a, p);
+    let (server, gb) = DhEchoServer::new(&p, &p, &p);
+    let a_s = modexp(&gb, &a, &p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
     let (new_ct, new_iv) = server.echo(&ciphertext, iv);
@@ -938,19 +911,19 @@ fn set_5_problem_35() {
     assert!(a_dec == m_dec);
 
     // g = p - 1 === -1 mod p -> try both -1 and 1
-    let a = random_biguint(p);
-    let p1 = p.sub_mod(&bigint(1), &NonZero::new(p).unwrap());
+    let a = random_biguint(p.as_nz_ref());
+    let p1 = p.sub_mod(&bigint(1), p.as_nz_ref());
 
-    let (server, gb) = DhEchoServer::new(p, p1, bigint(1));
-    let (server2, gb2) = DhEchoServer::new(p, p1, p1);
+    let (server, gb) = DhEchoServer::new(&p, &p1, &bigint(1));
+    let (server2, gb2) = DhEchoServer::new(&p, &p1, &p1);
 
-    let a_s = modexp(gb, a, p);
+    let a_s = modexp(&gb, &a, &p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
     let (new_ct, new_iv) = server.echo(&ciphertext, iv);
     let a_dec = aes_128_cbc_decrypt(&new_ct, &a_key, &new_iv);
 
-    let a_s = modexp(gb2, a, p);
+    let a_s = modexp(&gb2, &a, &p);
     let a_key = sha_1(&a_s.to_be_bytes())[..16].try_into().unwrap();
     let (ciphertext, iv) = aes_128_cbc_encrypt(msg, &a_key, &random_block());
     let (new_ct, new_iv) = server2.echo(&ciphertext, iv);
@@ -967,17 +940,8 @@ fn set_5_problem_35() {
 }
 
 fn set_5_problem_36() {
-    let n = bigint_hex(
-        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
-        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
-        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
-        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
-        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
-        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
-        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
-        fffffffffffff",
-    );
-    let nz = NonZero::new(n).unwrap();
+    let n = nist_prime();
+    let nz = n.as_nz_ref();
     let g = bigint(2);
     let k = bigint(3);
     let mut server = SrpServer::new(n, g, k);
@@ -986,19 +950,19 @@ fn set_5_problem_36() {
     let p = b"password";
     server.register_user(i, p);
 
-    let a = random_biguint(n);
-    let ga = modexp(g, a, n);
-    let (salt, gb, key_b) = server.handshake(i, ga);
+    let a = random_biguint(n.as_nz_ref());
+    let ga = modexp(&g, &a, &n);
+    let (salt, gb, key_b) = server.handshake(i, &ga);
 
     let uh = sha256(&[ga.to_be_bytes().as_slice(), gb.to_be_bytes().as_slice()].concat());
     let u = bigint_hex(&hex_encode(&uh));
     let xh = sha256(&[&salt, p as &[u8]].concat());
     let x = bigint_hex(&hex_encode(&xh));
 
-    let kgx = k.mul_mod(&modexp(g, x, n), &nz);
-    let gbkgx = gb.sub_mod(&kgx, &nz);
-    let aux = a.add_mod(&u.mul_mod(&x, &nz), &nz);
-    let s = modexp(gbkgx, aux, n);
+    let kgx = k.mul_mod(&modexp(&g, &x, &n), nz);
+    let gbkgx = gb.sub_mod(&kgx, nz);
+    let aux = a.add_mod(&u.mul_mod(&x, nz), nz);
+    let s = modexp(&gbkgx, &aux, &n);
     let key_a = sha256(s.to_be_bytes().as_slice());
 
     assert!(key_a == key_b);
@@ -1006,16 +970,7 @@ fn set_5_problem_36() {
 }
 
 fn set_5_problem_37() {
-    let n = bigint_hex(
-        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
-        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
-        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
-        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
-        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
-        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
-        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
-        fffffffffffff",
-    );
+    let n = nist_prime();
     let g = bigint(2);
     let k = bigint(3);
     let mut server = SrpServer::new(n, g, k);
@@ -1025,7 +980,7 @@ fn set_5_problem_37() {
     server.register_user(i, &p);
 
     let ga = bigint(0);
-    let (_, _, key_b) = server.handshake(i, ga);
+    let (_, _, key_b) = server.handshake(i, &ga);
     let key_a = sha256(ga.to_be_bytes().as_slice());
 
     assert!(key_a == key_b);
@@ -1033,29 +988,20 @@ fn set_5_problem_37() {
 }
 
 fn set_5_problem_38() {
-    let n = bigint_hex(
-        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
-        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
-        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
-        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
-        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
-        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
-        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
-        fffffffffffff",
-    );
-    let nz = NonZero::new(n).unwrap();
+    let n = nist_prime();
+    let nz = n.as_nz_ref();
     let g = bigint(2);
     let p = b"YELLOW SUBMARINE";
 
     let server = SimpleSrpServer::new(n, g, p);
-    let a = random_biguint(n);
-    let ga = modexp(g, a, n);
-    let (salt, gb, u, s_key) = server.handshake(ga);
+    let a = random_biguint(nz);
+    let ga = modexp(&g, &a, &n);
+    let (salt, gb, u, s_key) = server.handshake(&ga);
     let xh = sha256(&[&salt, p as &[u8]].concat());
     let x = bigint_hex(&hex_encode(&xh));
-    let ux = u.mul_mod(&x, &nz);
-    let aux = a.add_mod(&ux, &nz);
-    let s = modexp(gb, aux, n);
+    let ux = u.mul_mod(&x, nz);
+    let aux = a.add_mod(&ux, nz);
+    let s = modexp(&gb, &aux, &n);
     let a_key = sha256(s.to_be_bytes().as_slice());
     assert!(a_key == s_key);
 
@@ -1067,27 +1013,27 @@ fn set_5_problem_38() {
     ]
     .concat();
 
-    let a = random_biguint(n);
+    let a = random_biguint(nz);
     // simulate mitm values - no need to call server
     let salt = b"";
     let gb = g;
     let u = bigint(1);
     let xh = sha256(&[salt as &[u8], &p].concat());
     let x = bigint_hex(&hex_encode(&xh));
-    let ux = u.mul_mod(&x, &nz);
-    let aux = a.add_mod(&ux, &nz);
-    let s = modexp(gb, aux, n);
+    let ux = u.mul_mod(&x, nz);
+    let aux = a.add_mod(&ux, nz);
+    let s = modexp(&gb, &aux, &n);
     let a_key = sha256(s.to_be_bytes().as_slice());
 
     // mitm attacker has ga
-    let ga = modexp(g, a, n);
+    let ga = modexp(&g, &a, &n);
     let product =
         iproduct!(adjectives.iter(), objects.iter()).map(|(&adj, &obj)| [adj, obj].concat());
     for p_guess in product {
         let xh = sha256(&p_guess);
         let x = bigint_hex(&hex_encode(&xh));
-        let gx = modexp(g, x, n);
-        let s = ga.mul_mod(&gx, &nz);
+        let gx = modexp(&g, &x, &n);
+        let s = ga.mul_mod(&gx, nz);
         let key_guess = sha256(s.to_be_bytes().as_slice());
         if key_guess == a_key {
             println!(
@@ -1102,10 +1048,10 @@ fn set_5_problem_38() {
 }
 
 fn set_5_problem_39() {
-    assert!(modinv(bigint(17), bigint(3120)).unwrap() == bigint(2753));
+    assert!(modinv(&bigint(17), &NonZero::new(bigint(3120)).unwrap()).unwrap() == bigint(2753));
     let (e, d, n) = rsa_keygen(512);
-    let m = random_biguint(n);
-    assert!(rsa_decrypt(d, n, rsa_encrypt(e, n, m)).to_be_bytes() == m.to_be_bytes());
+    let m = random_biguint(n.as_nz_ref());
+    assert!(rsa_decrypt(&d, &n, &rsa_encrypt(&e, &n, &m)).to_be_bytes() == m.to_be_bytes());
 
     println!("set 5 problem 39: ok");
 }
@@ -1117,14 +1063,16 @@ fn set_5_problem_40() {
     let (e3, _, n3) = rsa_keygen(256);
     let message = bigint_hex(&hex_encode(b"YELLOW SUBMARINE"));
 
-    let ct1 = rsa_encrypt(e1, n1, message);
-    let ct2 = rsa_encrypt(e2, n2, message);
-    let ct3 = rsa_encrypt(e3, n3, message);
+    let ct1 = rsa_encrypt(&e1, &n1, &message);
+    let ct2 = rsa_encrypt(&e2, &n2, &message);
+    let ct3 = rsa_encrypt(&e3, &n3, &message);
 
     let n23 = n2 * n3;
-    let p1 = ct1 * n23 * modinv(n23, n1).unwrap();
+    let p1 = ct1 * n23.get() * modinv(&n23, n1.as_nz_ref()).unwrap();
     let n13 = n1 * n3;
-    let p2 = ct2 * n13 * modinv(n13, n2).unwrap();
+    let p2 = ct2 * n13.get() * modinv(&n13, n2.as_nz_ref()).unwrap();
     let n12 = n1 * n2;
-    let p3 = ct3 * n12 * modinv(n12, n3).unwrap();
+    let p3 = ct3 * n12.get() * modinv(&n12, n3.as_nz_ref()).unwrap();
+
+    let sum = p1 + p2 + p3;
 }

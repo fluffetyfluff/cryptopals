@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crypto_bigint::{NonZero, U2048};
+use crypto_bigint::{OddUint, U2048};
 use openssl::sha::sha256;
 
 use crate::{oracles::*, primitives::*};
@@ -10,10 +10,10 @@ pub struct DhEchoServer {
 }
 
 impl DhEchoServer {
-    pub fn new(p: U2048, g: U2048, ga: U2048) -> (Self, U2048) {
-        let b = random_biguint(p);
-        let s = modexp(ga, b, p);
-        let gb = modexp(g, b, p);
+    pub fn new(p: &OddUint<{ U2048::LIMBS }>, g: &U2048, ga: &U2048) -> (Self, U2048) {
+        let b = random_biguint(p.as_nz_ref());
+        let s = modexp(ga, &b, p);
+        let gb = modexp(g, &b, p);
         let key: [u8; 16] = sha_1(&s.to_be_bytes())[..16].try_into().unwrap();
         let server = DhEchoServer { key };
         (server, gb)
@@ -27,14 +27,14 @@ impl DhEchoServer {
 }
 
 pub struct SrpServer {
-    n: U2048,
+    n: OddUint<{ U2048::LIMBS }>,
     g: U2048,
     k: U2048,
     users: HashMap<Vec<u8>, (Block, U2048)>,
 }
 
 impl SrpServer {
-    pub fn new(n: U2048, g: U2048, k: U2048) -> Self {
+    pub fn new(n: OddUint<{ U2048::LIMBS }>, g: U2048, k: U2048) -> Self {
         SrpServer {
             n,
             g,
@@ -47,23 +47,23 @@ impl SrpServer {
         let salt = random_block();
         let xh = sha256(&[&salt, p].concat());
         let x = bigint_hex(&hex_encode(&xh));
-        let v = modexp(self.g, x, self.n);
+        let v = modexp(&self.g, &x, &self.n);
         self.users.insert(i.to_vec(), (salt, v));
     }
 
-    pub fn handshake(&mut self, i: &[u8], ga: U2048) -> (Block, U2048, [u8; 32]) {
+    pub fn handshake(&mut self, i: &[u8], ga: &U2048) -> (Block, U2048, [u8; 32]) {
         let (salt, v) = *self.users.get(&i.to_vec()).unwrap();
-        let b = random_biguint(self.n);
-        let nz = NonZero::new(self.n).unwrap();
+        let b = random_biguint(self.n.as_nz_ref());
+        let nz = self.n.as_nz_ref();
 
-        let kv = self.k.mul_mod(&v, &nz);
-        let gb = kv.add_mod(&modexp(self.g, b, self.n), &nz);
+        let kv = self.k.mul_mod(&v, nz);
+        let gb = kv.add_mod(&modexp(&self.g, &b, &self.n), nz);
         let uh = sha256(&[ga.to_be_bytes().as_slice(), gb.to_be_bytes().as_slice()].concat());
         let u = bigint_hex(&hex_encode(&uh));
 
-        let vu = modexp(v, u, self.n);
+        let vu = modexp(&v, &u, &self.n);
         let gavu = ga.mul_mod(&vu, &nz);
-        let s = modexp(gavu, b, self.n);
+        let s = modexp(&gavu, &b, &self.n);
         let key = sha256(s.to_be_bytes().as_slice());
 
         (salt, gb, key)
@@ -71,29 +71,29 @@ impl SrpServer {
 }
 
 pub struct SimpleSrpServer {
-    n: U2048,
+    n: OddUint<{ U2048::LIMBS }>,
     g: U2048,
     v: U2048,
     salt: Vec<u8>,
 }
 
 impl SimpleSrpServer {
-    pub fn new(n: U2048, g: U2048, p: &[u8]) -> Self {
+    pub fn new(n: OddUint<{ U2048::LIMBS }>, g: U2048, p: &[u8]) -> Self {
         let salt = random_bytes(16);
         let xh = sha256(&[&salt, p].concat());
         let x = bigint_hex(&hex_encode(&xh));
-        let v = modexp(g, x, n);
+        let v = modexp(&g, &x, &n);
         SimpleSrpServer { n, g, v, salt }
     }
 
-    pub fn handshake(&self, ga: U2048) -> (Vec<u8>, U2048, U2048, [u8; 32]) {
-        let nz = NonZero::new(self.n).unwrap();
+    pub fn handshake(&self, ga: &U2048) -> (Vec<u8>, U2048, U2048, [u8; 32]) {
+        let nz = self.n.as_nz_ref();
         let u = bigint_hex(&hex_encode(&random_bytes(16)));
-        let b = random_biguint(self.n);
-        let gb = modexp(self.g, b, self.n);
-        let vu = modexp(self.v, u, self.n);
-        let gavu = ga.mul_mod(&vu, &nz);
-        let s = modexp(gavu, b, self.n);
+        let b = random_biguint(self.n.as_nz_ref());
+        let gb = modexp(&self.g, &b, &self.n);
+        let vu = modexp(&self.v, &u, &self.n);
+        let gavu = ga.mul_mod(&vu, nz);
+        let s = modexp(&gavu, &b, &self.n);
         let key = sha256(s.to_be_bytes().as_slice());
         (self.salt.clone(), gb, u, key)
     }

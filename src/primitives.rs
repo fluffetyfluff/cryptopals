@@ -440,34 +440,36 @@ pub fn bigint(i: u64) -> U2048 {
     U2048::from(i)
 }
 
+pub fn odd_bigint(i: u64) -> OddUint<{ U2048::LIMBS }> {
+    OddUint::new(U2048::from(i)).unwrap()
+}
+
 pub fn bigint_hex(i: &str) -> U2048 {
     U2048::from_be_hex(&format!("{:0>512}", i))
 }
 
-pub fn modexp(base: U2048, pow: U2048, modulus: U2048) -> U2048 {
-    let modulus = OddUint::new(modulus).unwrap();
-    let params = FixedMontyParams::new(modulus);
+pub fn modexp(base: &U2048, pow: &U2048, modulus: &OddUint<{ U2048::LIMBS }>) -> U2048 {
+    let params = FixedMontyParams::new(*modulus);
     let base = FixedMontyForm::new(&base, &params);
     base.pow(&pow).retrieve()
 }
 
-pub fn modinv(a: U2048, modulus: U2048) -> Result<U2048, ()> {
-    let nz = NonZero::new(modulus).unwrap();
+pub fn modinv(a: &U2048, modulus: &NonZero<U2048>) -> Result<U2048, ()> {
     let mut t = bigint(0);
     let mut newt = bigint(1);
-    let mut r = modulus;
-    let mut newr = a;
+    let mut r = modulus.get();
+    let mut newr = *a;
 
     while let Some(newr_nz) = NonZero::new(newr).into_option() {
         let quotient = r.div_rem(&newr_nz).0;
-        (t, newt) = (newt, t.sub_mod(&quotient.mul_mod(&newt, &nz), &nz));
-        (r, newr) = (newr, r.sub_mod(&quotient.wrapping_mul(&newr), &nz));
+        (t, newt) = (newt, t.sub_mod(&quotient.mul_mod(&newt, modulus), modulus));
+        (r, newr) = (newr, r.sub_mod(&quotient.wrapping_mul(&newr), modulus));
     }
 
     if !(r > bigint(1)) { Ok(t) } else { Err(()) }
 }
 
-pub fn rsa_keygen(prime_size: u32) -> (U2048, U2048, U2048) {
+pub fn rsa_keygen(prime_size: u32) -> (U2048, U2048, OddUint<{ U2048::LIMBS }>) {
     assert!(prime_size <= 1024);
     let mut rng = rng();
     let mut d;
@@ -479,19 +481,21 @@ pub fn rsa_keygen(prime_size: u32) -> (U2048, U2048, U2048) {
         let q: U2048 = random_prime(&mut rng, Flavor::Any, prime_size);
         n = p.wrapping_mul(&q);
         let et = (p.wrapping_sub(&bigint(1))).wrapping_mul(&q.wrapping_sub(&bigint(1)));
+        let et = NonZero::new(et).unwrap();
         e = bigint(3);
-        d = modinv(e, et);
+        d = modinv(&e, &et);
         if d.is_ok() {
             break;
         }
     }
+    let n = OddUint::new(n).unwrap();
     (e, d.unwrap(), n)
 }
 
-pub fn rsa_encrypt(e: U2048, n: U2048, m: U2048) -> U2048 {
+pub fn rsa_encrypt(e: &U2048, n: &OddUint<{ U2048::LIMBS }>, m: &U2048) -> U2048 {
     modexp(m, e, n)
 }
 
-pub fn rsa_decrypt(d: U2048, n: U2048, c: U2048) -> U2048 {
+pub fn rsa_decrypt(d: &U2048, n: &OddUint<{ U2048::LIMBS }>, c: &U2048) -> U2048 {
     modexp(c, d, n)
 }

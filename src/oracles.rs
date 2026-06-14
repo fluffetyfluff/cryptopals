@@ -1,5 +1,5 @@
 use crate::primitives::*;
-use crypto_bigint::{NonZero, RandomMod, U2048};
+use crypto_bigint::{NonZero, OddUint, RandomMod, U2048};
 use itertools::Itertools;
 use rand::seq::IteratorRandom;
 use rand::{random, random_bool, random_range, rng};
@@ -242,7 +242,20 @@ pub fn secret_prefix_md4_mac_verifier(bytes: &[u8], mac: Md4Digest) -> bool {
     secret_prefix_md4_mac(bytes) == mac
 }
 
-pub fn random_biguint(n: U2048) -> U2048 {
-    let modulus = NonZero::new(n).unwrap();
-    U2048::random_mod_vartime(&mut rng(), &modulus)
+pub fn random_biguint(n: &NonZero<U2048>) -> U2048 {
+    U2048::random_mod_vartime(&mut rng(), n)
+}
+
+pub fn nist_prime() -> OddUint<{ U2048::LIMBS }> {
+    let p = bigint_hex(
+        "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\
+        e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd\
+        3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec\
+        6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f\
+        24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361\
+        c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552\
+        bb9ed529077096966d670c354e4abc9804f1746c08ca237327fff\
+        fffffffffffff",
+    );
+    OddUint::new(p).unwrap()
 }
