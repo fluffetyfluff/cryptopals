@@ -1103,9 +1103,28 @@ fn set_5_problem_38() {
 
 fn set_5_problem_39() {
     assert!(modinv(bigint(17), bigint(3120)).unwrap() == bigint(2753));
-    let (e, d, n) = rsa_keygen();
+    let (e, d, n) = rsa_keygen(512);
     let m = random_biguint(n);
     assert!(rsa_decrypt(d, n, rsa_encrypt(e, n, m)).to_be_bytes() == m.to_be_bytes());
 
     println!("set 5 problem 39: ok");
+}
+
+fn set_5_problem_40() {
+    // use 256 bit primes -> 512 bit n -> four of them multiplied still fits in U2048
+    let (e1, _, n1) = rsa_keygen(256);
+    let (e2, _, n2) = rsa_keygen(256);
+    let (e3, _, n3) = rsa_keygen(256);
+    let message = bigint_hex(&hex_encode(b"YELLOW SUBMARINE"));
+
+    let ct1 = rsa_encrypt(e1, n1, message);
+    let ct2 = rsa_encrypt(e2, n2, message);
+    let ct3 = rsa_encrypt(e3, n3, message);
+
+    let n23 = n2 * n3;
+    let p1 = ct1 * n23 * modinv(n23, n1).unwrap();
+    let n13 = n1 * n3;
+    let p2 = ct2 * n13 * modinv(n13, n2).unwrap();
+    let n12 = n1 * n2;
+    let p3 = ct3 * n12 * modinv(n12, n3).unwrap();
 }

@@ -467,15 +467,16 @@ pub fn modinv(a: U2048, modulus: U2048) -> Result<U2048, ()> {
     if !(r > bigint(1)) { Ok(t) } else { Err(()) }
 }
 
-pub fn rsa_keygen() -> (U2048, U2048, U2048) {
+pub fn rsa_keygen(prime_size: u32) -> (U2048, U2048, U2048) {
+    assert!(prime_size <= 1024);
     let mut rng = rng();
     let mut d;
     let mut e;
     let mut n;
 
     loop {
-        let p: U2048 = random_prime(&mut rng, Flavor::Any, 1024);
-        let q: U2048 = random_prime(&mut rng, Flavor::Any, 1024);
+        let p: U2048 = random_prime(&mut rng, Flavor::Any, prime_size);
+        let q: U2048 = random_prime(&mut rng, Flavor::Any, prime_size);
         n = p.wrapping_mul(&q);
         let et = (p.wrapping_sub(&bigint(1))).wrapping_mul(&q.wrapping_sub(&bigint(1)));
         e = bigint(3);
