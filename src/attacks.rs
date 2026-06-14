@@ -1,3 +1,5 @@
+use crypto_bigint::{CheckedAdd, U2048};
+
 use crate::language::*;
 use crate::primitives::*;
 
@@ -37,4 +39,39 @@ pub fn untemper_mt19937(output: u32) -> u32 {
     let right_10 = (output & 0x000003FF) ^ (middle_11 >> 11);
     let output = left_11 | middle_11 | right_10;
     output
+}
+
+pub fn cube_root(n: &U2048) -> U2048 {
+    if *n == U2048::ZERO || *n == U2048::ONE {
+        return *n;
+    }
+
+    let bits = n.bits();
+    let mut x = U2048::ONE << ((bits + 2) / 3);
+
+    if x == U2048::ZERO {
+        x = U2048::ONE;
+    }
+
+    let mut x_old = U2048::MAX;
+
+    let two = bigint(2);
+    let three = bigint(3);
+
+    while x < x_old {
+        x_old = x;
+
+        let x2 = x.checked_mul(&x).unwrap();
+        let n_over_x2 = n.checked_div(&x2).unwrap();
+
+        let sum = x
+            .checked_mul(&two)
+            .unwrap()
+            .checked_add(&n_over_x2)
+            .unwrap();
+
+        x = sum.checked_div(&three).unwrap();
+    }
+
+    x_old
 }

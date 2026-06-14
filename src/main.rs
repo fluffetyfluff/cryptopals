@@ -95,6 +95,7 @@ fn set_5() {
     set_5_problem_37();
     set_5_problem_38();
     set_5_problem_39();
+    set_5_problem_40();
 }
 
 fn set_1_problem_1() {
@@ -1067,12 +1068,27 @@ fn set_5_problem_40() {
     let ct2 = rsa_encrypt(&e2, &n2, &message);
     let ct3 = rsa_encrypt(&e3, &n3, &message);
 
-    let n23 = n2 * n3;
-    let p1 = ct1 * n23.get() * modinv(&n23, n1.as_nz_ref()).unwrap();
-    let n13 = n1 * n3;
-    let p2 = ct2 * n13.get() * modinv(&n13, n2.as_nz_ref()).unwrap();
-    let n12 = n1 * n2;
-    let p3 = ct3 * n12.get() * modinv(&n12, n3.as_nz_ref()).unwrap();
+    let n123 = n1 * n2 * n3;
+    let n123 = n123.as_nz_ref();
 
-    let sum = p1 + p2 + p3;
+    let n23 = n2.mul_mod(&n3, n123);
+    let p1 = ct1.mul_mod(
+        &n23.mul_mod(&modinv(&n23, n1.as_nz_ref()).unwrap(), n123),
+        n123,
+    );
+    let n13 = n1.mul_mod(&n3, n123);
+    let p2 = ct2.mul_mod(
+        &n13.mul_mod(&modinv(&n13, n2.as_nz_ref()).unwrap(), n123),
+        n123,
+    );
+    let n12 = n1.mul_mod(&n2, n123);
+    let p3 = ct3.mul_mod(
+        &n12.mul_mod(&modinv(&n12, n3.as_nz_ref()).unwrap(), n123),
+        n123,
+    );
+
+    let sum = p1.add_mod(&p2.add_mod(&p3, n123), n123);
+    let decryption = cube_root(&sum);
+    assert!(decryption.to_be_bytes() == message.to_be_bytes());
+    println!("set 5 problem 40: ok");
 }
