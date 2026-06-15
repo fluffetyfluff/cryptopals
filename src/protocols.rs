@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crypto_bigint::{OddUint, U2048};
 use openssl::sha::sha256;
@@ -96,5 +96,35 @@ impl SimpleSrpServer {
         let s = modexp(&gavu, &b, &self.n);
         let key = sha256(s.to_be_bytes().as_slice());
         (self.salt.clone(), gb, u, key)
+    }
+}
+
+pub struct RsaOnceServer {
+    n: OddUint<{ U2048::LIMBS }>,
+    d: U2048,
+    seen: HashSet<U2048>,
+}
+
+impl RsaOnceServer {
+    pub fn new() -> (Self, OddUint<{ U2048::LIMBS }>, U2048) {
+        let (e, d, n) = rsa_keygen(512);
+        (
+            RsaOnceServer {
+                n,
+                d,
+                seen: HashSet::new(),
+            },
+            n,
+            e,
+        )
+    }
+
+    pub fn decrypt(&mut self, ct: &U2048) -> Result<U2048, ()> {
+        if self.seen.contains(ct) {
+            Err(())
+        } else {
+            self.seen.insert(*ct);
+            Ok(rsa_decrypt(&self.d, &self.n, ct))
+        }
     }
 }

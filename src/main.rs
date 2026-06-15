@@ -32,7 +32,7 @@ fn main() {
         3 => set_3(),
         4 => set_4(),
         5 => set_5(),
-        6 => unimplemented(),
+        6 => set_6(),
         7 => unimplemented(),
         8 => unimplemented(),
         _ => (),
@@ -96,6 +96,10 @@ fn set_5() {
     set_5_problem_38();
     set_5_problem_39();
     set_5_problem_40();
+}
+
+fn set_6() {
+    set_6_problem_41();
 }
 
 fn set_1_problem_1() {
@@ -1091,4 +1095,20 @@ fn set_5_problem_40() {
     let decryption = cube_root(&sum);
     assert!(decryption.to_be_bytes() == message.to_be_bytes());
     println!("set 5 problem 40: ok");
+}
+
+fn set_6_problem_41() {
+    let message = bigint_hex(&hex_encode(b"YELLOW SUBMARINE"));
+    let (mut server, n, e) = RsaOnceServer::new();
+    let ct = rsa_encrypt(&e, &n, &message);
+    let decryption = server.decrypt(&ct).unwrap();
+    assert!(server.decrypt(&ct).is_err());
+
+    let two = bigint(2);
+    let ct2 = ct.mul_mod(&modexp(&two, &e, &n), n.as_nz_ref());
+    let inv2 = modinv(&two, n.as_nz_ref()).unwrap();
+    let decryption2 = server.decrypt(&ct2).unwrap().mul_mod(&inv2, n.as_nz_ref());
+    assert!(decryption.to_be_bytes() == decryption2.to_be_bytes());
+
+    println!("set 6 problem 41: ok");
 }

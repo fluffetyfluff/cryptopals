@@ -473,7 +473,7 @@ pub fn rsa_keygen(prime_size: u32) -> (U2048, U2048, OddUint<{ U2048::LIMBS }>) 
     assert!(prime_size <= 1024);
     let mut rng = rng();
     let mut d;
-    let mut e;
+    let e = bigint(3);
     let mut n;
 
     loop {
@@ -482,7 +482,6 @@ pub fn rsa_keygen(prime_size: u32) -> (U2048, U2048, OddUint<{ U2048::LIMBS }>) 
         n = p.wrapping_mul(&q);
         let et = (p.wrapping_sub(&bigint(1))).wrapping_mul(&q.wrapping_sub(&bigint(1)));
         let et = NonZero::new(et).unwrap();
-        e = bigint(3);
         d = modinv(&e, &et);
         if d.is_ok() {
             break;
