@@ -543,6 +543,15 @@ pub fn dsa_sign(x: &U2048, message: &[u8]) -> (U2048, U2048) {
 }
 
 pub fn dsa_verify(y: &U2048, r: &U2048, s: &U2048, message: &[u8]) -> bool {
+    let p = bigint_hex(
+        "800000000000000089e1855218a0e7dac38136ffafa72eda7\
+         859f2171e25e65eac698c1702578b07dc2a1076da241c76c6\
+         2d374d8389ea5aeffd3226a0530cc565f3bf6b50929139ebe\
+         ac04f48c3c84afb796d61e5a4f9a8fda812ab59494232c7d2\
+         b4deb50aa18ee9e132bfa85ac4374d7f9091abc3d015efc87\
+         1a584471bb1",
+    );
+    let p = OddUint::new(p).unwrap();
     let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
     let q = OddUint::new(q).unwrap();
     let q_nz = q.as_nz_ref();
@@ -565,9 +574,9 @@ pub fn dsa_verify(y: &U2048, r: &U2048, s: &U2048, message: &[u8]) -> bool {
     let w = modinv(s, q_nz).unwrap();
     let u1 = hash.mul_mod(&w, q_nz);
     let u2 = r.mul_mod(&w, q_nz);
-    let gu1 = modexp(&g, &u1, &q);
-    let yu2 = modexp(y, &u2, &q);
-    let v = gu1.mul_mod(&yu2, q_nz);
+    let gu1 = modexp(&g, &u1, &p);
+    let yu2 = modexp(y, &u2, &p);
+    let v = gu1.mul_mod(&yu2, p.as_nz_ref()).rem(q_nz);
 
     *r == v
 }
