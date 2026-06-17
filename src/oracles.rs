@@ -259,3 +259,33 @@ pub fn nist_prime() -> OddUint<{ U2048::LIMBS }> {
     );
     OddUint::new(p).unwrap()
 }
+
+pub fn rsa_pkcs_verifier(
+    message: &[u8],
+    signature: &U2048,
+    n: &OddUint<{ U2048::LIMBS }>,
+    bit_length: usize,
+) -> bool {
+    let asn = hex_decode("003020300c06082a864886f70d020405000410");
+    let hash = md4(message);
+    let signature = modexp(signature, &bigint(3), n);
+    let signature = signature.to_be_bytes();
+    let signature = signature.as_slice();
+    let mut i = (2048 - bit_length) / 8;
+
+    if signature[i..i + 3] != [0x00u8, 0x01u8, 0xffu8] {
+        return false;
+    }
+    i += 3;
+
+    while signature[i] == 0xff {
+        i += 1;
+    }
+
+    if signature[i..i + 19] != asn {
+        return false;
+    }
+    i += 19;
+
+    signature[i..i + 16] == hash
+}

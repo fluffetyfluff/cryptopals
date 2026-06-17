@@ -100,6 +100,7 @@ fn set_5() {
 
 fn set_6() {
     set_6_problem_41();
+    set_6_problem_42();
 }
 
 fn set_1_problem_1() {
@@ -1111,4 +1112,37 @@ fn set_6_problem_41() {
     assert!(decryption.to_be_bytes() == decryption2.to_be_bytes());
 
     println!("set 6 problem 41: ok");
+}
+
+fn set_6_problem_42() {
+    // funnily enough, this attack gets easier when the rsa key size is larger
+    // since we need ~2/3 of the bits to massage message to look like a cube root
+    // sha-256 and its asn don't actually fit in the top third of 1024 bits
+    // using md4 instead puts us closer to the margin
+    let (_, d, n) = rsa_keygen(512);
+    let crafted_string = bigint_hex(
+        "0001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\
+         ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\
+         ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff003020\
+         300c06082a864886f70d0204050004103caec78ddfc0b781a428aaeb9ead641d",
+    );
+    let valid_signature = modexp(&crafted_string, &d, &n);
+    assert!(rsa_pkcs_verifier(b"hi mom", &valid_signature, &n, 1024));
+
+    let forgery_target = bigint_hex(
+        "0001ff003020300c06082a864886f70d0204050004103caec78ddfc0b781a428\
+         aaeb9ead641d0000000000000000000000000000000000000000000000000000\
+         0000000000000000000000000000000000000000000000000000000000000000\
+         0000000000000000000000000000000000000000000000000000000000000000",
+    );
+    let one = bigint(1);
+    let three = bigint(3);
+    let mut cube_root = cube_root(&forgery_target);
+    while modexp(&cube_root, &three, &n) < forgery_target {
+        cube_root += one;
+    }
+    rsa_pkcs_verifier(b"hi mom", &(cube_root.wrapping_sub(&one)), &n, 1024);
+    assert!(rsa_pkcs_verifier(b"hi mom", &cube_root, &n, 1024));
+
+    println!("set 6 problem 42: ok");
 }
