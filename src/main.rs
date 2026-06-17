@@ -102,6 +102,7 @@ fn set_6() {
     set_6_problem_41();
     set_6_problem_42();
     set_6_problem_43();
+    set_6_problem_44();
 }
 
 fn set_1_problem_1() {
@@ -1198,6 +1199,31 @@ fn set_6_problem_43() {
     let x = dsa_key_recovery(&r, &s, &bigint(real_k), &hash);
     let key = hex_encode(&x.to_be_bytes().as_slice());
     let key = key.trim_start_matches('0');
+    let key_hash = sha_1(key.as_bytes());
+    assert!(&key_hash as &[u8] == &hex_decode("0954edd5e0afe5542a4adf012611a91912a3ec16"));
 
     println!("set 6 problem 43: found key {0}", key);
+}
+
+fn set_6_problem_44() {
+    let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
+    let q = OddUint::new(q).unwrap();
+    let q_nz = q.as_nz_ref();
+
+    // r is only dependent on k for randomness -> same k -> same r
+    let r = bigint_hex("C1A545DE46348F25BFE81B7B5AD87292F8DB9B7B");
+    let s1 = bigint_hex("DE0005B256A1C401DEE8E88C954789A8637D5B9C");
+    let hash1 = bigint_hex("a4db3de27e2db3e5ef085ced2bced91b82e0df19");
+    let s2 = bigint_hex("B2F415CE7A39268BD650C4975A0ACBE5EFD372D7");
+    let hash2 = bigint_hex("d22804c4899b522b23eda34d2137cd8cc22b9ce8");
+
+    let denom = modinv(&s1.sub_mod(&s2, q_nz), q_nz).unwrap();
+    let k = hash1.sub_mod(&hash2, q_nz).mul_mod(&denom, q_nz);
+    let x = dsa_key_recovery(&r, &s1, &k, &hash1);
+    let key = hex_encode(&x.to_be_bytes().as_slice());
+    let key = key.trim_start_matches('0');
+
+    let key_hash = sha_1(key.as_bytes());
+    assert!(&key_hash as &[u8] == &hex_decode("ca8f6f7c66fa362d40760d135b763eb8527d3d52"));
+    println!("set 6 problem 44: found key {0}", key);
 }
