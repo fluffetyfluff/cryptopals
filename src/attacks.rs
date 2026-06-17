@@ -1,4 +1,4 @@
-use crypto_bigint::{CheckedAdd, U2048};
+use crypto_bigint::{CheckedAdd, NonZero, U2048};
 
 use crate::language::*;
 use crate::primitives::*;
@@ -74,4 +74,12 @@ pub fn cube_root(n: &U2048) -> U2048 {
     }
 
     x_old
+}
+
+pub fn dsa_key_recovery(r: &U2048, s: &U2048, k: &U2048, hash: &U2048) -> U2048 {
+    let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
+    let q = &NonZero::new(q).unwrap();
+    let r_1 = modinv(r, q).unwrap();
+    let sk = s.mul_mod(k, q);
+    r_1.mul_mod(&sk.sub_mod(hash, q), q)
 }

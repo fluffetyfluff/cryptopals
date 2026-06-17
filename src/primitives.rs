@@ -10,6 +10,8 @@ use crypto_bigint::{
 use crypto_primes::{Flavor, random_prime};
 use rand::rng;
 
+use crate::oracles::random_biguint;
+
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
 pub type Sha1Digest = [u8; 20];
@@ -451,7 +453,7 @@ pub fn bigint_hex(i: &str) -> U2048 {
 pub fn modexp(base: &U2048, pow: &U2048, modulus: &OddUint<{ U2048::LIMBS }>) -> U2048 {
     let params = FixedMontyParams::new(*modulus);
     let base = FixedMontyForm::new(&base, &params);
-    base.pow(&pow).retrieve()
+    base.pow_vartime(&pow).retrieve()
 }
 
 pub fn modinv(a: &U2048, modulus: &NonZero<U2048>) -> Result<U2048, ()> {
@@ -497,4 +499,75 @@ pub fn rsa_encrypt(e: &U2048, n: &OddUint<{ U2048::LIMBS }>, m: &U2048) -> U2048
 
 pub fn rsa_decrypt(d: &U2048, n: &OddUint<{ U2048::LIMBS }>, c: &U2048) -> U2048 {
     modexp(c, d, n)
+}
+
+pub fn dsa_sign(x: &U2048, message: &[u8]) -> (U2048, U2048) {
+    let p = bigint_hex(
+        "800000000000000089e1855218a0e7dac38136ffafa72eda7\
+         859f2171e25e65eac698c1702578b07dc2a1076da241c76c6\
+         2d374d8389ea5aeffd3226a0530cc565f3bf6b50929139ebe\
+         ac04f48c3c84afb796d61e5a4f9a8fda812ab59494232c7d2\
+         b4deb50aa18ee9e132bfa85ac4374d7f9091abc3d015efc87\
+         1a584471bb1",
+    );
+    let p = OddUint::new(p).unwrap();
+    let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
+    let q = OddUint::new(q).unwrap();
+    let q_nz = q.as_nz_ref();
+    let g = bigint_hex(
+        "5958c9d3898b224b12672c0b98e06c60df923cb8bc999d119\
+         458fef538b8fa4046c8db53039db620c094c9fa077ef389b5\
+         322a559946a71903f990f1f7e0e025e2d7f7cf494aff1a047\
+         0f5b64c36b625a097f1651fe775323556fe00b3608c887892\
+         878480e99041be601a62166ca6894bdd41a7054ec89f756ba\
+         9fc95302291",
+    );
+
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+
+    loop {
+        let k = random_biguint(q_nz);
+        let r = modexp(&g, &k, &p);
+        let r = r.rem(q_nz);
+        if r == U2048::ZERO {
+            continue;
+        }
+        let k_1 = modinv(&k, q_nz).unwrap();
+        let hxr = hash.add_mod(&x.mul_mod(&r, q_nz), q_nz);
+        let s = k_1.mul_mod(&hxr, q_nz);
+        if s != U2048::ZERO {
+            return (r, s);
+        }
+    }
+}
+
+pub fn dsa_verify(y: &U2048, r: &U2048, s: &U2048, message: &[u8]) -> bool {
+    let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
+    let q = OddUint::new(q).unwrap();
+    let q_nz = q.as_nz_ref();
+    let g = bigint_hex(
+        "5958c9d3898b224b12672c0b98e06c60df923cb8bc999d119\
+         458fef538b8fa4046c8db53039db620c094c9fa077ef389b5\
+         322a559946a71903f990f1f7e0e025e2d7f7cf494aff1a047\
+         0f5b64c36b625a097f1651fe775323556fe00b3608c887892\
+         878480e99041be601a62166ca6894bdd41a7054ec89f756ba\
+         9fc95302291",
+    );
+
+    if *r == U2048::ZERO || *s == U2048::ZERO || *r >= q || *s >= q {
+        return false;
+    }
+
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+
+    let w = modinv(s, q_nz).unwrap();
+    let u1 = hash.mul_mod(&w, q_nz);
+    let u2 = r.mul_mod(&w, q_nz);
+    let gu1 = modexp(&g, &u1, &q);
+    let yu2 = modexp(y, &u2, &q);
+    let v = gu1.mul_mod(&yu2, q_nz);
+
+    *r == v
 }
