@@ -554,7 +554,6 @@ pub fn dsa_verify(y: &U2048, r: &U2048, s: &U2048, message: &[u8]) -> bool {
     let p = OddUint::new(p).unwrap();
     let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
     let q = OddUint::new(q).unwrap();
-    let q_nz = q.as_nz_ref();
     let g = bigint_hex(
         "5958c9d3898b224b12672c0b98e06c60df923cb8bc999d119\
          458fef538b8fa4046c8db53039db620c094c9fa077ef389b5\
@@ -563,8 +562,21 @@ pub fn dsa_verify(y: &U2048, r: &U2048, s: &U2048, message: &[u8]) -> bool {
          878480e99041be601a62166ca6894bdd41a7054ec89f756ba\
          9fc95302291",
     );
+    dsa_verify_parameters(&p, &q, &g, y, r, s, message)
+}
 
-    if *r == U2048::ZERO || *s == U2048::ZERO || *r >= q || *s >= q {
+pub fn dsa_verify_parameters(
+    p: &OddUint<{ U2048::LIMBS }>,
+    q: &OddUint<{ U2048::LIMBS }>,
+    g: &U2048,
+    y: &U2048,
+    r: &U2048,
+    s: &U2048,
+    message: &[u8],
+) -> bool {
+    let q_nz = q.as_nz_ref();
+
+    if *r == U2048::ZERO || *s == U2048::ZERO || *r >= q.get() || *s >= q.get() {
         return false;
     }
 

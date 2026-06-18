@@ -103,6 +103,7 @@ fn set_6() {
     set_6_problem_42();
     set_6_problem_43();
     set_6_problem_44();
+    set_6_problem_45();
 }
 
 fn set_1_problem_1() {
@@ -1226,4 +1227,49 @@ fn set_6_problem_44() {
     let key_hash = sha_1(key.as_bytes());
     assert!(&key_hash as &[u8] == &hex_decode("ca8f6f7c66fa362d40760d135b763eb8527d3d52"));
     println!("set 6 problem 44: found key {0}", key);
+}
+
+fn set_6_problem_45() {
+    // The g = 0 = p case is uninteresting, since it effectively just fixes r = 0.
+    // The Wikipedia implementation of DSA sign also doesn't even allow this,
+    // since it explicitly checks for the r = 0 case.
+    // This only implements the g = 1 = p + 1 case.
+    let p = bigint_hex(
+        "800000000000000089e1855218a0e7dac38136ffafa72eda7\
+         859f2171e25e65eac698c1702578b07dc2a1076da241c76c6\
+         2d374d8389ea5aeffd3226a0530cc565f3bf6b50929139ebe\
+         ac04f48c3c84afb796d61e5a4f9a8fda812ab59494232c7d2\
+         b4deb50aa18ee9e132bfa85ac4374d7f9091abc3d015efc87\
+         1a584471bb1",
+    );
+    let p = OddUint::new(p).unwrap();
+    let q = bigint_hex("f4f47f05794b256174bba6e9b396a7707e563c5b");
+    let q = OddUint::new(q).unwrap();
+    let g = p.get().wrapping_add(&bigint(1));
+
+    let y = random_biguint(q.as_nz_ref());
+    let z = bigint(2);
+    let r = modexp(&y, &z, &p).rem(q.as_nz_ref());
+    let s = modinv(&z, q.as_nz_ref())
+        .unwrap()
+        .mul_mod(&r, q.as_nz_ref());
+    assert!(dsa_verify_parameters(
+        &p,
+        &q,
+        &g,
+        &y,
+        &r,
+        &s,
+        b"Hello, World"
+    ));
+    assert!(dsa_verify_parameters(
+        &p,
+        &q,
+        &g,
+        &y,
+        &r,
+        &s,
+        b"Goodbye, World"
+    ));
+    println!("set 6 problem 45: ok");
 }
