@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crypto_bigint::{OddUint, U2048};
+use crypto_bigint::{Integer, OddUint, U2048};
 use openssl::sha::sha256;
 
 use crate::{oracles::*, primitives::*};
@@ -126,5 +126,23 @@ impl RsaOnceServer {
             self.seen.insert(*ct);
             Ok(rsa_decrypt(&self.d, &self.n, ct))
         }
+    }
+}
+
+pub struct RsaParityOracleServer {
+    d: U2048,
+    n: OddUint<{ U2048::LIMBS }>,
+}
+
+impl RsaParityOracleServer {
+    pub fn new() -> (Self, U2048, OddUint<{ U2048::LIMBS }>) {
+        let (e, d, n) = rsa_keygen(512);
+        let server = RsaParityOracleServer { d, n };
+        (server, e, n)
+    }
+
+    pub fn is_even(&self, ciphertext: &U2048) -> bool {
+        let plaintext = rsa_decrypt(&self.d, &self.n, ciphertext);
+        plaintext.is_even().to_bool()
     }
 }

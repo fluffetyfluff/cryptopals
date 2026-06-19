@@ -104,6 +104,7 @@ fn set_6() {
     set_6_problem_43();
     set_6_problem_44();
     set_6_problem_45();
+    set_6_problem_46();
 }
 
 fn set_1_problem_1() {
@@ -1272,4 +1273,35 @@ fn set_6_problem_45() {
         b"Goodbye, World"
     ));
     println!("set 6 problem 45: ok");
+}
+
+fn set_6_problem_46() {
+    let message = b64_decode(
+        "VGhhdCdzIHdoeSBJIGZvdW5kIHlvdSBkb24ndCBwbGF5IGFyb3VuZCB3aXRoIHRoZSBGdW5reSBDb2xkIE1lZGluYQ==",
+    );
+    let (server, e, n) = RsaParityOracleServer::new();
+    let plaintext = bigint_hex(&hex_encode(&message));
+    let ciphertext = rsa_encrypt(&e, &n, &plaintext);
+
+    let one = bigint(1);
+    let two = NonZero::new(bigint(2)).unwrap();
+    let two_e = modexp(&two, &e, &n);
+    let mut doubled_ct = ciphertext;
+    let mut min = bigint(0);
+    let mut max = n.get();
+
+    while min != max {
+        doubled_ct = doubled_ct.mul_mod(&two_e, n.as_nz_ref());
+        let midpoint = min.wrapping_add(&max).wrapping_div(&two);
+        if server.is_even(&doubled_ct) {
+            max = midpoint;
+        } else {
+            min = midpoint.wrapping_add(&one);
+        }
+    }
+
+    println!(
+        "set 6 problem 46: {0}",
+        String::from_utf8_lossy(min.to_be_bytes().as_slice())
+    );
 }
