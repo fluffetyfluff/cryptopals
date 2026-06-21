@@ -1283,25 +1283,31 @@ fn set_6_problem_46() {
     let plaintext = bigint_hex(&hex_encode(&message));
     let ciphertext = rsa_encrypt(&e, &n, &plaintext);
 
-    let one = bigint(1);
-    let two = NonZero::new(bigint(2)).unwrap();
-    let two_e = modexp(&two, &e, &n);
+    let two_e = modexp(&bigint(2), &e, &n);
     let mut doubled_ct = ciphertext;
     let mut min = bigint(0);
     let mut max = n.get();
+    let mut divisor = bigint(1);
 
-    while min != max {
+    for _ in 0..n.bits() {
         doubled_ct = doubled_ct.mul_mod(&two_e, n.as_nz_ref());
-        let midpoint = min.wrapping_add(&max).wrapping_div(&two);
+        let diff = max.wrapping_sub(&min);
+        min = min.shl(1);
+        max = max.shl(1);
+        divisor = divisor.shl(1);
+
         if server.is_even(&doubled_ct) {
-            max = midpoint;
+            max = max.wrapping_sub(&diff);
         } else {
-            min = midpoint.wrapping_add(&one);
+            min = min.wrapping_add(&diff);
         }
     }
 
+    let divisor = NonZero::new(divisor).unwrap();
+    let ans = max.wrapping_div(&divisor);
+
     println!(
         "set 6 problem 46: {0}",
-        String::from_utf8_lossy(min.to_be_bytes().as_slice())
+        String::from_utf8_lossy(ans.to_be_bytes().as_slice())
     );
 }
