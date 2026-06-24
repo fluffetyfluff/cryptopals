@@ -106,6 +106,7 @@ fn set_6() {
     set_6_problem_45();
     set_6_problem_46();
     set_6_problem_47();
+    set_6_problem_48();
 }
 
 fn set_1_problem_1() {
@@ -1324,4 +1325,20 @@ pub fn set_6_problem_47() {
     let recovered_message = String::from_utf8_lossy(&recovered_message);
 
     println!("set 6 problem 47: {0}", recovered_message);
+}
+
+pub fn set_6_problem_48() {
+    let (server, e, n) = RsaPaddingOracleServer::new(384);
+    let plaintext = pkcs15_pad(
+        b"Chosen Ciphertext Attacks Against Protocols Based on the RSA Encryption Standard PKCS #1",
+        768,
+    );
+    let ciphertext = rsa_encrypt(&e, &n, &plaintext);
+    assert!(server.oracle(&ciphertext));
+
+    let recovered_message = bleichenbacher(&ciphertext, &e, &n, |ct| server.oracle(ct), 768);
+    let recovered_message = pkcs15_unpad(&recovered_message, 768);
+    let recovered_message = String::from_utf8_lossy(&recovered_message);
+
+    println!("set 6 problem 48: {0}", recovered_message);
 }
