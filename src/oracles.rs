@@ -37,7 +37,7 @@ pub fn ecb_or_cbc_encrypt_oracle(input: &[u8]) -> (Vec<u8>, bool) {
     let mut random_padding_after = random_bytes(random_range(5..=10));
     random_padding_before.append(&mut input);
     random_padding_before.append(&mut random_padding_after);
-    let input = pkcs_pad(&random_padding_before);
+    let input = pkcs7_pad(&random_padding_before);
 
     if decision {
         let iv = random_block();
@@ -55,7 +55,7 @@ pub fn ecb_prefix_oracle(input: &[u8]) -> Vec<u8> {
     let mut content = b64_decode(content);
     let mut input = input.to_vec();
     input.append(&mut content);
-    let input = pkcs_pad(&input);
+    let input = pkcs7_pad(&input);
     aes_128_ecb_decrypt(&input, &RANDOM_KEY)
 }
 
@@ -83,7 +83,7 @@ pub fn create_profile(user_email: &str) -> String {
 
 pub fn profile_oracle(user_email: &str) -> Vec<u8> {
     let profile = create_profile(user_email);
-    let profile = pkcs_pad(profile.as_bytes());
+    let profile = pkcs7_pad(profile.as_bytes());
     aes_128_ecb_encrypt(&profile, &RANDOM_KEY)
 }
 
@@ -104,7 +104,7 @@ pub fn cbc_encrypt_oracle(user_data: &[u8]) -> (Vec<u8>, Block) {
         b";comment2=%20like%20a%20pound%20of%20bacon",
     ]
     .concat();
-    let input = pkcs_pad(&input);
+    let input = pkcs7_pad(&input);
     aes_128_cbc_encrypt(&input, &RANDOM_KEY, &random_block())
 }
 
@@ -125,7 +125,7 @@ pub fn cbc_encrypt_iv_oracle(user_data: &[u8]) -> Vec<u8> {
         b";comment2=%20like%20a%20pound%20of%20bacon",
     ]
     .concat();
-    let input = pkcs_pad(&input);
+    let input = pkcs7_pad(&input);
     aes_128_cbc_encrypt(&input, &RANDOM_KEY, &RANDOM_KEY).0
 }
 
@@ -153,7 +153,7 @@ pub fn padding_cbc_encrypt_oracle() -> (Vec<u8>, Block) {
     ]);
     let mut rng = rng();
     let ciphertext = ciphertext_set.iter().choose(&mut rng).unwrap();
-    let ciphertext = pkcs_pad(ciphertext);
+    let ciphertext = pkcs7_pad(ciphertext);
     aes_128_cbc_encrypt(&ciphertext, &RANDOM_KEY, &random_block())
 }
 

@@ -4,7 +4,7 @@ use aes::{
 };
 use base64::prelude::*;
 use crypto_bigint::{
-    NonZero, OddUint, U2048,
+    BitOps, Choice, NonZero, OddUint, U2048,
     modular::{FixedMontyForm, FixedMontyParams},
 };
 use crypto_primes::{Flavor, random_prime};
@@ -204,7 +204,7 @@ pub fn pkcs_pad_length(bytes: &[u8], length: usize) -> Vec<u8> {
     block
 }
 
-pub fn pkcs_pad(bytes: &[u8]) -> Vec<u8> {
+pub fn pkcs7_pad(bytes: &[u8]) -> Vec<u8> {
     let length = (bytes.len() / 16) * 16 + 16;
     pkcs_pad_length(bytes, length)
 }
@@ -591,4 +591,23 @@ pub fn dsa_verify_parameters(
     let v = gu1.mul_mod(&yu2, p.as_nz_ref()).rem(q_nz);
 
     *r == v
+}
+
+pub fn pkcs15_pad(message: &[u8], bit_length: usize) -> U2048 {
+    assert!(bit_length % 8 == 0);
+    assert!(message.len() + 2 <= bit_length / 8);
+    let mut message = bigint_hex(&hex_encode(message));
+    message.set_bit((bit_length - 15) as u32, Choice::TRUE);
+    message
+}
+
+pub fn pkcs15_unpad(message: &U2048, bit_length: usize) -> Vec<u8> {
+    assert!(bit_length % 8 == 0);
+    let byte_length = bit_length / 8;
+    let i = 256 - byte_length;
+    let plaintext = message.to_be_bytes();
+
+    assert!(plaintext[i..i + 2] == [0x00, 0x02]);
+    let slice = &plaintext[i + 2..];
+    slice.to_vec()
 }

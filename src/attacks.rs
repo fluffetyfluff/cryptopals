@@ -1,3 +1,4 @@
+use crypto_bigint::OddUint;
 use crypto_bigint::{CheckedAdd, NonZero, U2048};
 
 use crate::language::*;
@@ -82,4 +83,144 @@ pub fn dsa_key_recovery(r: &U2048, s: &U2048, k: &U2048, hash: &U2048) -> U2048 
     let r_1 = modinv(r, q).unwrap();
     let sk = s.mul_mod(k, q);
     r_1.mul_mod(&sk.sub_mod(hash, q), q)
+}
+
+pub fn bleichenbacher(
+    c: &U2048,
+    e: &U2048,
+    n: &OddUint<{ U2048::LIMBS }>,
+    oracle: impl Fn(&U2048) -> bool,
+    bit_length: u32,
+) -> U2048 {
+    assert!(bit_length % 8 == 0);
+    let one = U2048::ONE;
+    let two = bigint(2);
+    let three = bigint(3);
+
+    let big_b = U2048::ONE.shl(bit_length - 16);
+    let b2 = big_b.wrapping_mul(&two);
+    let b3 = big_b.wrapping_mul(&three);
+    let b3_1 = b3.wrapping_sub(&one);
+
+    // can assume message already conforms here, skip step 1
+    let mut s_i1 = one;
+    let c_0 = c;
+    let mut m_i1 = vec![(b2, b3_1)];
+
+    let mut i = 1;
+
+    loop {
+        let s_i;
+
+        if i == 1 {
+            // 2.a
+            let mut s_temp = n.get().wrapping_div(&NonZero::new(b3).unwrap());
+            loop {
+                let s_e = modexp(&s_temp, e, n);
+                let cs_e = c_0.mul_mod(&s_e, n.as_nz_ref());
+                if oracle(&cs_e) {
+                    s_i = s_temp;
+                    break;
+                }
+                s_temp = s_temp.wrapping_add(&one);
+            }
+        } else if m_i1.len() > 1 {
+            // 2.b
+            let mut s_temp = s_i1;
+            loop {
+                s_temp = s_temp.wrapping_add(&one);
+                let s_e = modexp(&s_temp, e, n);
+                let cs_e = c_0.mul_mod(&s_e, n.as_nz_ref());
+                if oracle(&cs_e) {
+                    s_i = s_temp;
+                    break;
+                }
+            }
+        } else {
+            // 2.c
+            let (a, b) = m_i1[0];
+            let a_nz = NonZero::new(a).unwrap();
+            let b_nz = NonZero::new(b).unwrap();
+            let bs_i1b2 = b.wrapping_mul(&s_i1).wrapping_sub(&b2).wrapping_mul(&two);
+            let mut r_i = ceil_div(&bs_i1b2, n.as_nz_ref());
+            's: loop {
+                let r_in = r_i.wrapping_mul(&n);
+                let mut s_temp = r_in.wrapping_add(&b2).wrapping_div(&b_nz);
+                let upper_bound = r_in.wrapping_add(&b3).wrapping_div(&a_nz);
+
+                while s_temp <= upper_bound {
+                    let s_e = modexp(&s_temp, e, n);
+                    let cs_e = c_0.mul_mod(&s_e, n.as_nz_ref());
+                    if oracle(&cs_e) {
+                        s_i = s_temp;
+                        break 's;
+                    }
+                    s_temp = s_temp.wrapping_add(&one);
+                }
+                r_i = r_i.wrapping_add(&one);
+            }
+        }
+
+        // 3
+        let mut m_i = Vec::new();
+        let s_inz = NonZero::new(s_i).unwrap();
+        i += 1;
+
+        for interval in m_i1 {
+            let (a, b) = interval;
+            let as_i = a.wrapping_mul(&s_i);
+            let bs_i = b.wrapping_mul(&s_i);
+            let mut r = as_i.wrapping_sub(&b3_1).wrapping_div(n.as_nz_ref());
+            let upper_bound = bs_i.wrapping_sub(&b2).wrapping_div(n.as_nz_ref());
+
+            while r <= upper_bound {
+                let rn = r.wrapping_mul(&n);
+                let a_temp = ceil_div(&b2.wrapping_add(&rn), &s_inz);
+                let b_temp = b3.wrapping_add(&rn).wrapping_div(&s_inz);
+                let new_a = if a_temp > a { a_temp } else { a };
+                let new_b = if b_temp < b { b_temp } else { b };
+                if new_a <= new_b {
+                    m_i.push((new_a, new_b));
+                }
+                r = r.wrapping_add(&one);
+            }
+        }
+
+        m_i1 = merge_intervals(m_i);
+        s_i1 = s_i;
+
+        if m_i1.len() == 1 && m_i1[0].0 == m_i1[0].1 {
+            return m_i1[0].0;
+        }
+    }
+}
+
+fn merge_intervals(mut list: Vec<(U2048, U2048)>) -> Vec<(U2048, U2048)> {
+    if list.is_empty() {
+        return list;
+    }
+
+    list.sort_by(|x, y| x.0.cmp_vartime(&y.0));
+
+    let mut merged = vec![list[0].clone()];
+    for entry in list.into_iter().skip(1) {
+        let last = merged.last_mut().unwrap();
+        if entry.0 <= last.1.wrapping_add(&U2048::ONE) {
+            if entry.1 > last.1 {
+                last.1 = entry.1;
+            }
+        } else {
+            merged.push(entry);
+        }
+    }
+    merged
+}
+
+fn ceil_div(num: &U2048, denom: &NonZero<U2048>) -> U2048 {
+    let (quot, rem) = num.div_rem(denom);
+    if rem == U2048::ZERO {
+        quot
+    } else {
+        quot.wrapping_add(&U2048::ONE)
+    }
 }

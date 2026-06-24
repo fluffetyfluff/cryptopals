@@ -146,3 +146,23 @@ impl RsaParityOracleServer {
         plaintext.is_even().to_bool()
     }
 }
+
+pub struct RsaPaddingOracleServer {
+    i: usize,
+    d: U2048,
+    n: OddUint<{ U2048::LIMBS }>,
+}
+
+impl RsaPaddingOracleServer {
+    pub fn new(prime_size: u32) -> (Self, U2048, OddUint<{ U2048::LIMBS }>) {
+        let (e, d, n) = rsa_keygen(prime_size);
+        let i = ((2048 - (prime_size * 2)) / 8) as usize;
+        let server = RsaPaddingOracleServer { i, d, n };
+        (server, e, n)
+    }
+
+    pub fn oracle(&self, ciphertext: &U2048) -> bool {
+        let plaintext = rsa_decrypt(&self.d, &self.n, ciphertext);
+        plaintext.to_be_bytes()[self.i..self.i + 2] == [0x00, 0x02]
+    }
+}
