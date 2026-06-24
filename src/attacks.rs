@@ -1,5 +1,5 @@
 use crypto_bigint::OddUint;
-use crypto_bigint::{CheckedAdd, NonZero, U2048};
+use crypto_bigint::{NonZero, U2048};
 
 use crate::language::*;
 use crate::primitives::*;
@@ -43,15 +43,17 @@ pub fn untemper_mt19937(output: u32) -> u32 {
 }
 
 pub fn cube_root(n: &U2048) -> U2048 {
-    if *n == U2048::ZERO || *n == U2048::ONE {
+    let one = U2048::ONE;
+    let zero = U2048::ZERO;
+    if *n == zero || *n == one {
         return *n;
     }
 
     let bits = n.bits();
-    let mut x = U2048::ONE << ((bits + 2) / 3);
+    let mut x = one.shl((bits + 2) / 3);
 
-    if x == U2048::ZERO {
-        x = U2048::ONE;
+    if x == zero {
+        x = one;
     }
 
     let mut x_old = U2048::MAX;
@@ -62,16 +64,12 @@ pub fn cube_root(n: &U2048) -> U2048 {
     while x < x_old {
         x_old = x;
 
-        let x2 = x.checked_mul(&x).unwrap();
-        let n_over_x2 = n.checked_div(&x2).unwrap();
+        let x_2 = x.wrapping_mul(&x);
+        let n_x_2 = n.wrapping_div(&NonZero::new(x_2).unwrap());
 
-        let sum = x
-            .checked_mul(&two)
-            .unwrap()
-            .checked_add(&n_over_x2)
-            .unwrap();
+        let sum = x.wrapping_mul(&two).wrapping_add(&n_x_2);
 
-        x = sum.checked_div(&three).unwrap();
+        x = sum.wrapping_div(&NonZero::new(three).unwrap());
     }
 
     x_old
