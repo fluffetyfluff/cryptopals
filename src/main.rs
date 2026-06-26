@@ -33,7 +33,7 @@ fn main() {
         4 => set_4(),
         5 => set_5(),
         6 => set_6(),
-        7 => unimplemented(),
+        7 => set_7(),
         8 => unimplemented(),
         _ => (),
     }
@@ -107,6 +107,10 @@ fn set_6() {
     set_6_problem_46();
     set_6_problem_47();
     set_6_problem_48();
+}
+
+fn set_7() {
+    set_7_problem_49();
 }
 
 fn set_1_problem_1() {
@@ -1341,4 +1345,19 @@ pub fn set_6_problem_48() {
     let recovered_message = String::from_utf8_lossy(&recovered_message);
 
     println!("set 6 problem 48: {0}", recovered_message);
+}
+
+pub fn set_7_problem_49() {
+    let server = CbcMacServer::new();
+    let message = pkcs7_pad(b"from=pwn&to=bob&amount=1 million spacebucks");
+    let iv = random_block();
+    let mac = server.mac_iv(&message, &iv);
+    assert!(server.verify_iv(&message, &iv, &mac));
+
+    let pwn_message = pkcs7_pad(b"from=bob&to=pwn&amount=1 million spacebucks");
+    let pwn_diff = xor(b"from=bob&to=pwn&", b"from=pwn&to=bob&");
+    let pwn_iv = xor(&iv, &pwn_diff).try_into().unwrap();
+    assert!(server.verify_iv(&pwn_message, &pwn_iv, &mac));
+
+    println!("set 7 problem 49: ok");
 }

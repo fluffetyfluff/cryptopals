@@ -166,3 +166,35 @@ impl RsaPaddingOracleServer {
         plaintext.to_be_bytes()[self.i..self.i + 2] == [0x00, 0x02]
     }
 }
+
+pub struct CbcMacServer {
+    key: Block,
+}
+
+impl CbcMacServer {
+    pub fn new() -> Self {
+        let key = random_block();
+        CbcMacServer { key }
+    }
+
+    pub fn mac_iv(&self, message: &[u8], iv: &Block) -> Block {
+        let ct = aes_128_cbc_encrypt(message, &self.key, iv).0;
+        let len = ct.len();
+        let block: Block = ct[len - 16..].try_into().unwrap();
+        block
+    }
+
+    pub fn verify_iv(&self, message: &[u8], iv: &Block, mac: &Block) -> bool {
+        let recalc_mac = self.mac_iv(message, iv);
+        recalc_mac == *mac
+    }
+
+    pub fn mac(&self, message: &[u8]) -> Block {
+        self.mac_iv(message, &[0x00u8; 16])
+    }
+
+    pub fn verify(&self, message: &[u8], mac: &Block) -> bool {
+        let recalc_mac = self.mac(message);
+        recalc_mac == *mac
+    }
+}
