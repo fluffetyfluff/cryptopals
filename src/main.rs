@@ -111,6 +111,7 @@ fn set_6() {
 
 fn set_7() {
     set_7_problem_49();
+    set_7_problem_50();
 }
 
 fn set_1_problem_1() {
@@ -1318,7 +1319,7 @@ fn set_6_problem_46() {
     );
 }
 
-pub fn set_6_problem_47() {
+fn set_6_problem_47() {
     let (server, e, n) = RsaPaddingOracleServer::new(128);
     let plaintext = pkcs15_pad(b"kick it, CC", 256);
     let ciphertext = rsa_encrypt(&e, &n, &plaintext);
@@ -1331,7 +1332,7 @@ pub fn set_6_problem_47() {
     println!("set 6 problem 47: {0}", recovered_message);
 }
 
-pub fn set_6_problem_48() {
+fn set_6_problem_48() {
     let (server, e, n) = RsaPaddingOracleServer::new(384);
     let plaintext = pkcs15_pad(
         b"Chosen Ciphertext Attacks Against Protocols Based on the RSA Encryption Standard PKCS #1",
@@ -1347,7 +1348,7 @@ pub fn set_6_problem_48() {
     println!("set 6 problem 48: {0}", recovered_message);
 }
 
-pub fn set_7_problem_49() {
+fn set_7_problem_49() {
     let server = CbcMacServer::new();
     let message = pkcs7_pad(b"from=pwn&to=bob&amount=1 million spacebucks");
     let iv = random_block();
@@ -1369,4 +1370,28 @@ pub fn set_7_problem_49() {
     assert!(server.verify(pwn_message, &block_mac));
 
     println!("set 7 problem 49: ok");
+}
+
+fn set_7_problem_50() {
+    fn cbc_mac(message: &[u8], key: &Block) -> Block {
+        let iv = [0x00u8; 16];
+        let ct = aes_128_cbc_encrypt(&message, key, &iv).0;
+        let mac: Block = ct[ct.len() - 16..].try_into().unwrap();
+        mac
+    }
+
+    let key = b"YELLOW SUBMARINE";
+    let message = pkcs7_pad(b"alert('MZA who was that?');\n");
+    let mac = cbc_mac(&message, key);
+    assert!(hex_encode(&mac) == "296b8d7cb78a243dda4d0a61d33bbdd1");
+
+    let pwn_message = b"alert('Ayo, the Wu is back!');//";
+    let mut pwn_mac = cbc_mac(pwn_message, key).to_vec();
+    pwn_mac.resize(message.len(), 0x00);
+    let modified_message = xor(&message, &pwn_mac);
+    let mut combined_message = pwn_message.to_vec();
+    combined_message.extend(&modified_message);
+    assert!(hex_encode(&cbc_mac(&combined_message, key)) == "296b8d7cb78a243dda4d0a61d33bbdd1");
+
+    println!("set 7 problem 50: ok");
 }
