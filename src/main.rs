@@ -1359,5 +1359,14 @@ pub fn set_7_problem_49() {
     let pwn_iv = xor(&iv, &pwn_diff).try_into().unwrap();
     assert!(server.verify_iv(&pwn_message, &pwn_iv, &mac));
 
+    let message = b"from=alice&tx_list=bob:100000000";
+    let mac = server.mac(message);
+    assert!(server.verify(message, &mac));
+
+    let pwn_message = b"from=alice&tx_list=bob:100000000;pwn:10000000000";
+    let target = xor(b";pwn:10000000000", &mac);
+    let block_mac = server.mac(&target);
+    assert!(server.verify(pwn_message, &block_mac));
+
     println!("set 7 problem 49: ok");
 }
