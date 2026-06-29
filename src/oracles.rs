@@ -1,9 +1,12 @@
 use crate::primitives::*;
 use crypto_bigint::{NonZero, OddUint, RandomMod, U2048};
+use flate2::Compression;
+use flate2::write::ZlibEncoder;
 use itertools::Itertools;
 use rand::seq::IteratorRandom;
 use rand::{random, random_bool, random_range, rng};
 use std::collections::{HashMap, HashSet};
+use std::io::Write;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -288,4 +291,20 @@ pub fn rsa_pkcs_verifier(
     i += 19;
 
     signature[i..i + 16] == hash
+}
+
+pub fn ctr_compression_oracle(request: &str) -> usize {
+    let len = request.len();
+    let request = format!(
+        "POST / HTTP/1.1
+Host: hapless.com
+Cookie: sessionid=TmV2ZXIgcmV2ZWFsIHRoZSBXdS1UYW5nIFNlY3JldCE=
+Content-Length: {len}
+{request}"
+    );
+
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
+    encoder.write_all(request.as_bytes()).unwrap();
+    let plaintext = encoder.finish().unwrap();
+    plaintext.len() // no need to actually do the encryption, ctr doesn't change length
 }

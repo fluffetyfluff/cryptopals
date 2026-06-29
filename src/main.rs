@@ -112,6 +112,7 @@ fn set_6() {
 fn set_7() {
     set_7_problem_49();
     set_7_problem_50();
+    set_7_problem_51();
 }
 
 fn set_1_problem_1() {
@@ -1394,4 +1395,30 @@ fn set_7_problem_50() {
     assert!(hex_encode(&cbc_mac(&combined_message, key)) == "296b8d7cb78a243dda4d0a61d33bbdd1");
 
     println!("set 7 problem 50: ok");
+}
+
+fn set_7_problem_51() {
+    let mut candidates = vec![String::from("sessionid=")];
+    let alphabet = "1234567890+/qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM=";
+    for _ in 0..44 {
+        let mut lengths_map: HashMap<usize, Vec<String>> = HashMap::new();
+        let mut min = 10000;
+        for character in alphabet.chars() {
+            for candidate in candidates.iter() {
+                let mut new_candidate = candidate.clone();
+                new_candidate.push(character);
+                let size = ctr_compression_oracle(&new_candidate);
+                min = if size < min { size } else { min };
+                if size == min {
+                    lengths_map
+                        .entry(size)
+                        .or_insert(Vec::new())
+                        .push(new_candidate);
+                }
+            }
+        }
+        candidates = lengths_map.get(&min).unwrap().clone();
+    }
+
+    println!("set 7 problem 51: {candidates:?}");
 }

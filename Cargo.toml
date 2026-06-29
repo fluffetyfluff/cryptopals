@@ -9,6 +9,7 @@ base64 = "0.22.1"
 clap = { version = "4.6.1", features = ["derive"] }
 crypto-bigint = "0.7.3"
 crypto-primes = "0.7.2"
+flate2 = "1.1.9"
 hex = "0.4.3"
 itertools = "0.14.0"
 openssl = "0.10.76"
