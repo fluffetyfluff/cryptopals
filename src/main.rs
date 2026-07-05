@@ -1419,6 +1419,45 @@ fn set_7_problem_51() {
         }
         candidates = lengths_map.get(&min).unwrap().clone();
     }
+    assert!(candidates.len() == 1);
+    let token = &candidates[0][10..];
+    let token = b64_decode(token);
+    let token = String::from_utf8_lossy(&token);
+    assert!(token == "Never reveal the Wu-Tang Secret!");
 
-    println!("set 7 problem 51: {candidates:?}");
+    let mut candidate = String::from("sessionid=");
+    for _ in 0..22 {
+        'inner: for shift in 0..3 {
+            let c = &candidate[shift..];
+            for padding_len in 0..20 {
+                let padding = &alphabet[..padding_len];
+                let mut min = 100000;
+                let mut lengths_map: HashMap<usize, Vec<(char, char)>> = HashMap::new();
+                for char1 in alphabet.chars() {
+                    for char2 in alphabet.chars() {
+                        let size = ctr_compression_oracle(&format!("{padding}{c}{char1}{char2}"));
+                        min = if size < min { size } else { min };
+                        if size == min {
+                            lengths_map
+                                .entry(size)
+                                .or_insert(Vec::new())
+                                .push((char1, char2));
+                        }
+                    }
+                }
+                let min_vec = lengths_map.get(&min).unwrap();
+                if min_vec.len() == 1 {
+                    candidate.push(min_vec[0].0);
+                    candidate.push(min_vec[0].1);
+                    break 'inner;
+                }
+            }
+        }
+    }
+
+    let token = &candidate[10..];
+    let token = b64_decode(token);
+    let token = String::from_utf8_lossy(&token);
+    assert!(token == "Never reveal the Wu-Tang Secret!");
+    println!("set 7 problem 51: {}", token);
 }

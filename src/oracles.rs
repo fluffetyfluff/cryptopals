@@ -293,7 +293,7 @@ pub fn rsa_pkcs_verifier(
     signature[i..i + 16] == hash
 }
 
-pub fn ctr_compression_oracle(request: &str) -> usize {
+fn format_and_compress(request: &str) -> Vec<u8> {
     let len = request.len();
     let request = format!(
         "POST / HTTP/1.1
@@ -305,6 +305,15 @@ Content-Length: {len}
 
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
     encoder.write_all(request.as_bytes()).unwrap();
-    let plaintext = encoder.finish().unwrap();
+    encoder.finish().unwrap()
+}
+
+pub fn ctr_compression_oracle(request: &str) -> usize {
+    let plaintext = format_and_compress(request);
     plaintext.len() // no need to actually do the encryption, ctr doesn't change length
+}
+
+pub fn cbc_compression_oracle(request: &str) -> usize {
+    let plaintext = format_and_compress(request);
+    pkcs7_pad(&plaintext).len() // pad and return length, still don't need to encrypt
 }
