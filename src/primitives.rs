@@ -611,3 +611,43 @@ pub fn pkcs15_unpad(message: &U2048, bit_length: usize) -> Vec<u8> {
     let slice = &plaintext[i + 2..];
     slice.to_vec()
 }
+
+pub fn md_pad(bytes: &[u8], block_size: usize, len_size: usize, prev_len: usize) -> Vec<u8> {
+    assert!(prev_len % block_size == 0);
+    let message_len = prev_len + bytes.len();
+    let target_len = message_len
+        + (block_size as i32 - len_size as i32 - message_len as i32).rem_euclid(16) as usize;
+    let mut preprocessed_bytes: Vec<u8> = Vec::with_capacity(target_len + len_size - prev_len);
+    let message_len_bytes = message_len.to_be_bytes();
+    preprocessed_bytes.extend_from_slice(bytes);
+    preprocessed_bytes.push(0x80);
+    preprocessed_bytes.resize(target_len - prev_len, 0x0);
+    preprocessed_bytes.extend_from_slice(&message_len_bytes[message_len_bytes.len() - len_size..]);
+    assert!(preprocessed_bytes.len() % block_size == 0);
+    preprocessed_bytes
+}
+
+pub fn aes_md<const N: usize>(bytes: &[u8]) -> [u8; N] {
+    let h = [0x00; N];
+    aes_md_extend(bytes, 0, h)
+}
+
+pub fn aes_md_extend<const N: usize>(bytes: &[u8], prev_length: usize, mut h: [u8; N]) -> [u8; N] {
+    fn expand<const N: usize>(bytes: &[u8; N]) -> Block {
+        let mut out: Block = [0x00; 16];
+        out[..N].copy_from_slice(bytes);
+        out
+    }
+
+    fn compress<const N: usize>(block: &Block) -> [u8; N] {
+        block[..N].try_into().unwrap()
+    }
+
+    let padded_bytes = md_pad(bytes, 16, 4, prev_length);
+    for block in split_blocks(&padded_bytes) {
+        let expanded = expand(&h);
+        h = compress(&aes_128_encrypt(&block, &expanded));
+    }
+
+    h
+}

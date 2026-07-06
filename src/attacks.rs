@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crypto_bigint::OddUint;
 use crypto_bigint::{NonZero, U2048};
 
@@ -221,4 +223,39 @@ fn ceil_div(num: &U2048, denom: &NonZero<U2048>) -> U2048 {
     } else {
         quot.wrapping_add(&U2048::ONE)
     }
+}
+
+pub fn find_collisions<const N: usize>(length: usize) -> Vec<(u64, u64)> {
+    let mut colliding_pairs: Vec<(u64, u64)> = Vec::new();
+    let mut state = [0x00u8; N];
+    let mut prev_len = 0;
+    for _ in 0..length {
+        let mut map: HashMap<[u8; N], u64> = HashMap::new();
+        let mut attempt: u64 = 0;
+        loop {
+            let hash: [u8; N] = aes_md_extend(&attempt.to_be_bytes(), prev_len, state);
+            if let Some(collision) = map.insert(hash, attempt) {
+                colliding_pairs.push((attempt, collision));
+                state = hash;
+                prev_len += 16;
+                break;
+            }
+            attempt += 1;
+        }
+    }
+    colliding_pairs
+}
+
+pub fn repad_collision<const N: usize>(data: &[u64]) -> Vec<u8> {
+    let mut ans = Vec::new();
+    let mut prev_len = 0;
+
+    for block in data {
+        let padded = md_pad(&block.to_be_bytes(), 16, 4, prev_len);
+        ans.extend(padded);
+        prev_len += 16;
+    }
+
+    ans.resize(ans.len() - 8, 0x00);
+    ans
 }
