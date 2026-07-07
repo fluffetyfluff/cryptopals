@@ -246,7 +246,7 @@ pub fn find_collisions<const N: usize>(length: usize) -> Vec<(u64, u64)> {
     colliding_pairs
 }
 
-pub fn repad_collision<const N: usize>(data: &[u64]) -> Vec<u8> {
+pub fn repad_collision(data: &[u64]) -> Vec<u8> {
     let mut ans = Vec::new();
     let mut prev_len = 0;
 
@@ -257,5 +257,51 @@ pub fn repad_collision<const N: usize>(data: &[u64]) -> Vec<u8> {
     }
 
     ans.resize(ans.len() - 8, 0x00);
+    ans
+}
+
+pub fn find_expandable_collisions<const N: usize>(k: usize) -> Vec<(u128, u128)> {
+    let mut colliding_pairs: Vec<(u128, u128)> = Vec::new();
+    let mut state = [0x00u8; N];
+    for i in 0..k as u128 {
+        let mut map: HashMap<[u8; N], u128> = HashMap::new();
+        let mut attempt = 0u128;
+        let mut extended_state = state.clone();
+        for _ in 0..(1 << i) {
+            extended_state = aes_md_extend_block(&[0; 16], &extended_state);
+        }
+        loop {
+            let attempt_bytes = &attempt.to_be_bytes();
+            let single_hash: [u8; N] = aes_md_extend_block(attempt_bytes, &state);
+            let extended_hash: [u8; N] = aes_md_extend_block(attempt_bytes, &extended_state);
+            map.insert(single_hash, attempt);
+            if let Some(single) = map.get(&extended_hash) {
+                colliding_pairs.push((*single, attempt));
+                state = extended_hash;
+                break;
+            }
+            attempt += 1;
+        }
+    }
+    colliding_pairs
+}
+
+pub fn expandable_message(collisions: &Vec<(u128, u128)>, len: usize) -> Vec<u8> {
+    let k = collisions.len();
+    assert!(k <= len && len < (1 << k) - 1 + k);
+    let mut target = len - k;
+    let mut ans: Vec<u8> = Vec::new();
+    for i in 0..k {
+        let (single, extended) = collisions[i];
+        if target % 2 == 0 {
+            ans.extend_from_slice(&single.to_be_bytes());
+        } else {
+            for _ in 0..(1 << i) {
+                ans.extend_from_slice(&[0; 16]);
+            }
+            ans.extend_from_slice(&extended.to_be_bytes());
+        }
+        target = target >> 1;
+    }
     ans
 }

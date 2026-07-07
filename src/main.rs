@@ -114,6 +114,7 @@ fn set_7() {
     set_7_problem_50();
     set_7_problem_51();
     set_7_problem_52();
+    set_7_problem_53();
 }
 
 fn set_1_problem_1() {
@@ -1467,13 +1468,33 @@ fn set_7_problem_52() {
     let collisions = find_collisions::<2>(3);
     let u1: Vec<u64> = collisions.iter().map(|(a, _)| *a).collect();
     let u2: Vec<u64> = collisions.iter().map(|(_, b)| *b).collect();
-    let u1: Vec<u8> = repad_collision::<2>(&u1);
-    let u2: Vec<u8> = repad_collision::<2>(&u2);
+    let u1: Vec<u8> = repad_collision(&u1);
+    let u2: Vec<u8> = repad_collision(&u2);
     let hash1 = aes_md::<2>(&u1);
     let hash2 = aes_md::<2>(&u2);
     println!(
         "set 7 problem 52: {0} => {hash1:?} | {1} => {hash2:?}",
         hex_encode(&u1),
         hex_encode(&u2)
+    );
+}
+
+fn set_7_problem_53() {
+    let collisions = find_expandable_collisions::<2>(3);
+    let five_message = expandable_message(&collisions, 5);
+    let seven_message = expandable_message(&collisions, 7);
+
+    let mut hash5 = [0x00; 2];
+    for block in split_blocks(&five_message) {
+        hash5 = aes_md_extend_block(&block, &hash5);
+    }
+    let mut hash7 = [0x00; 2];
+    for block in split_blocks(&five_message) {
+        hash7 = aes_md_extend_block(&block, &hash7);
+    }
+    println!(
+        "set 7 problem 52: {0} => {hash5:?} | {1} => {hash7:?}",
+        hex_encode(&five_message),
+        hex_encode(&seven_message)
     );
 }
