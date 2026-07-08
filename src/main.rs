@@ -1480,21 +1480,44 @@ fn set_7_problem_52() {
 }
 
 fn set_7_problem_53() {
-    let collisions = find_expandable_collisions::<2>(3);
-    let five_message = expandable_message(&collisions, 5);
-    let seven_message = expandable_message(&collisions, 7);
+    let collisions = find_expandable_collisions::<2>(8);
+    let long_message: Vec<u8> = (0u128..256).map(|u| u.to_be_bytes()).flatten().collect();
+    let long_message_blocks = split_blocks(&long_message);
 
-    let mut hash5 = [0x00; 2];
-    for block in split_blocks(&five_message) {
-        hash5 = aes_md_extend_block(&block, &hash5);
+    let mut state_map: HashMap<[u8; 2], usize> = HashMap::new();
+    let mut state = [0x00u8; 2];
+    for (i, block) in long_message_blocks.iter().enumerate() {
+        state = aes_md_extend_block(block, &state);
+        if i > 8 {
+            // need to skip first 9, since the shortest expandable + bridge is k + 1 = 9
+            state_map.insert(state, i);
+        }
     }
-    let mut hash7 = [0x00; 2];
-    for block in split_blocks(&five_message) {
-        hash7 = aes_md_extend_block(&block, &hash7);
+
+    let mut state = [0x00u8; 2];
+    for (block_u, _) in collisions.iter() {
+        state = aes_md_extend_block(&block_u.to_be_bytes(), &state);
     }
-    println!(
-        "set 7 problem 52: {0} => {hash5:?} | {1} => {hash7:?}",
-        hex_encode(&five_message),
-        hex_encode(&seven_message)
-    );
+
+    let mut bridge_u: u128 = 0;
+    let index;
+    loop {
+        let bridge_state = aes_md_extend_block(&bridge_u.to_be_bytes(), &state);
+        if let Some(i) = state_map.get(&bridge_state) {
+            index = *i;
+            break;
+        }
+        bridge_u += 1;
+    }
+
+    let mut expandable = expandable_message(&collisions, index);
+    expandable.extend_from_slice(&bridge_u.to_be_bytes());
+    for i in index + 1..long_message_blocks.len() {
+        expandable.extend_from_slice(&long_message_blocks[i]);
+    }
+
+    assert!(expandable.len() == long_message.len());
+    let expandable_hash = aes_md::<2>(&expandable);
+    let original_hash = aes_md::<2>(&long_message);
+    println!("set 7 problem 53: original: {original_hash:?} collision: {expandable_hash:?}");
 }
