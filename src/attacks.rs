@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use crypto_bigint::OddUint;
 use crypto_bigint::{NonZero, U2048};
+use std::collections::HashMap;
 
 use crate::language::*;
 use crate::primitives::*;
@@ -304,4 +303,78 @@ pub fn expandable_message(collisions: &Vec<(u128, u128)>, len: usize) -> Vec<u8>
         target = target >> 1;
     }
     ans
+}
+
+pub struct NostradamusFunnel<const N: usize> {
+    k: usize,
+    maps: Vec<HashMap<[u8; N], u128>>,
+    final_state: [u8; N],
+}
+
+impl NostradamusFunnel<2> {
+    pub fn new(k: usize) -> Self {
+        let mut maps: Vec<HashMap<[u8; 2], u128>> = Vec::new();
+        let mut states: Vec<[u8; 2]> = (0u16..(1 << k))
+            .map(|u| u.to_be_bytes().try_into().unwrap())
+            .collect();
+
+        for _ in 0..k {
+            let mut new_states: Vec<[u8; 2]> = Vec::new();
+            let mut map: HashMap<[u8; 2], u128> = HashMap::new();
+
+            for i in 0..states.len() / 2 {
+                let first = states[i];
+                let second = states[i + 1];
+                let mut collision_map: HashMap<[u8; 2], u128> = HashMap::new();
+                let mut attempt = 0u128;
+                loop {
+                    let first_state = aes_md_extend_block(&attempt.to_be_bytes(), &first);
+                    let second_state = aes_md_extend_block(&attempt.to_be_bytes(), &second);
+                    if let Some(&collision) = collision_map.get(&second_state) {
+                        new_states.push(second_state);
+                        map.insert(first, collision);
+                        map.insert(second, attempt);
+                        break;
+                    }
+                    collision_map.insert(first_state, attempt);
+                    attempt += 1;
+                }
+            }
+            maps.push(map);
+            states = new_states;
+        }
+
+        assert!(states.len() == 1);
+        let final_state = states[0];
+
+        Self {
+            k,
+            maps,
+            final_state,
+        }
+    }
+
+    pub fn in_collision_surface(&self, state: &[u8; 2]) -> bool {
+        self.maps[0].contains_key(state)
+    }
+
+    pub fn collision_surface(&self) -> Vec<&[u8; 2]> {
+        self.maps[0].keys().collect()
+    }
+
+    pub fn final_state(&self) -> [u8; 2] {
+        self.final_state
+    }
+
+    pub fn construct_collision_chain(&self, state: &[u8; 2]) -> Vec<u8> {
+        let mut ans: Vec<u8> = Vec::new();
+        let mut state = *state;
+        for i in 0..self.k {
+            let bridge = self.maps[i].get(&state).unwrap().to_be_bytes();
+
+            ans.extend_from_slice(&bridge);
+            state = aes_md_extend_block(&bridge, &state);
+        }
+        ans
+    }
 }

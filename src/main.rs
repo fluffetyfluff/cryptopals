@@ -115,6 +115,7 @@ fn set_7() {
     set_7_problem_51();
     set_7_problem_52();
     set_7_problem_53();
+    set_7_problem_54();
 }
 
 fn set_1_problem_1() {
@@ -1468,15 +1469,11 @@ fn set_7_problem_52() {
     let collisions = find_collisions::<2>(3);
     let u1: Vec<u64> = collisions.iter().map(|(a, _)| *a).collect();
     let u2: Vec<u64> = collisions.iter().map(|(_, b)| *b).collect();
-    let u1: Vec<u8> = repad_collision(&u1);
-    let u2: Vec<u8> = repad_collision(&u2);
-    let hash1 = aes_md::<2>(&u1);
-    let hash2 = aes_md::<2>(&u2);
-    println!(
-        "set 7 problem 52: {0} => {hash1:?} | {1} => {hash2:?}",
-        hex_encode(&u1),
-        hex_encode(&u2)
-    );
+    let u1_pad: Vec<u8> = repad_collision(&u1);
+    let u2_pad: Vec<u8> = repad_collision(&u2);
+    let hash1 = aes_md::<2>(&u1_pad);
+    let hash2 = aes_md::<2>(&u2_pad);
+    println!("set 7 problem 52: {u1:?} => {hash1:?} | {u2:?} => {hash2:?}",);
 }
 
 fn set_7_problem_53() {
@@ -1520,4 +1517,11 @@ fn set_7_problem_53() {
     let expandable_hash = aes_md::<2>(&expandable);
     let original_hash = aes_md::<2>(&long_message);
     println!("set 7 problem 53: original: {original_hash:?} collision: {expandable_hash:?}");
+}
+
+fn set_7_problem_54() {
+    let funnel = NostradamusFunnel::<2>::new(3);
+    let starting_state = funnel.collision_surface()[0];
+    let chain = funnel.construct_collision_chain(&starting_state);
+    println!("set 7 problem 54: {chain:?}");
 }
