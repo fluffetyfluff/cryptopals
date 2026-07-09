@@ -322,9 +322,9 @@ impl NostradamusFunnel<2> {
             let mut new_states: Vec<[u8; 2]> = Vec::new();
             let mut map: HashMap<[u8; 2], u128> = HashMap::new();
 
-            for i in 0..states.len() / 2 {
-                let first = states[i];
-                let second = states[i + 1];
+            for chunk in states.chunks_exact(2) {
+                let first = chunk[0];
+                let second = chunk[1];
                 let mut collision_map: HashMap<[u8; 2], u128> = HashMap::new();
                 let mut attempt = 0u128;
                 loop {

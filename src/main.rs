@@ -1520,8 +1520,36 @@ fn set_7_problem_53() {
 }
 
 fn set_7_problem_54() {
-    let funnel = NostradamusFunnel::<2>::new(3);
-    let starting_state = funnel.collision_surface()[0];
-    let chain = funnel.construct_collision_chain(&starting_state);
-    println!("set 7 problem 54: {chain:?}");
+    let funnel_length = 8;
+    let funnel = NostradamusFunnel::<2>::new(funnel_length);
+
+    let total_length = 16; // 16 blocks total for message + chain + padding
+    let padding_block = b"pad";
+    let target_message = b"YELLOW SUBMARINE, BLUE SUBMARINE";
+    let target_hash = aes_md_extend(padding_block, total_length * 16, funnel.final_state());
+
+    let mut message: Vec<u8> = Vec::new();
+    message.extend_from_slice(target_message);
+    message.resize((total_length - funnel_length - 1) * 16, 0b00);
+    let mut state = [0x00u8; 2];
+    for block in split_blocks(&message) {
+        state = aes_md_extend_block(&block, &state);
+    }
+
+    let mut attempt: u128 = 0;
+    let mut new_state;
+    loop {
+        new_state = aes_md_extend_block(&attempt.to_be_bytes(), &state);
+        if funnel.in_collision_surface(&new_state) {
+            break;
+        }
+        attempt += 1;
+    }
+
+    message.extend_from_slice(&attempt.to_be_bytes());
+    message.extend_from_slice(&funnel.construct_collision_chain(&new_state));
+    message.extend_from_slice(padding_block);
+    let message_hash = aes_md::<2>(&message);
+
+    println!("set 7 problem 54: message hash: {message_hash:?} target hash: {target_hash:?}");
 }
