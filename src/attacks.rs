@@ -3,6 +3,7 @@ use crypto_bigint::{NonZero, U2048};
 use std::collections::HashMap;
 
 use crate::language::*;
+use crate::oracles::*;
 use crate::primitives::*;
 
 pub fn one_byte_xor(input: &[u8]) -> (String, u8, f32) {
@@ -377,4 +378,324 @@ impl NostradamusFunnel<2> {
         }
         ans
     }
+}
+
+enum ConstraintType {
+    Eq,
+    Zero,
+    One,
+}
+
+struct Constraint(ConstraintType, u32);
+
+pub fn weak_message() -> Vec<u32> {
+    use ConstraintType::*;
+
+    fn f(x: u32, y: u32, z: u32) -> u32 {
+        (x & y) | (!x & z)
+    }
+    fn g(x: u32, y: u32, z: u32) -> u32 {
+        (x & y) | (x & z) | (y & z)
+    }
+
+    fn phi1(a: u32, b: u32, c: u32, d: u32, m: u32, s: u32) -> u32 {
+        a.wrapping_add(f(b, c, d)).wrapping_add(m).rotate_left(s)
+    }
+    fn phi2(a: u32, b: u32, c: u32, d: u32, m: u32, s: u32) -> u32 {
+        a.wrapping_add(g(b, c, d))
+            .wrapping_add(m)
+            .wrapping_add(0x5a827999)
+            .rotate_left(s)
+    }
+
+    fn phi1_inv(a: u32, b: u32, c: u32, d: u32, next_a: u32, s: u32) -> u32 {
+        next_a
+            .rotate_right(s)
+            .wrapping_sub(a)
+            .wrapping_sub(f(b, c, d))
+    }
+    fn phi2_inv(a: u32, b: u32, c: u32, d: u32, next_a: u32, s: u32) -> u32 {
+        next_a
+            .rotate_right(s)
+            .wrapping_sub(a)
+            .wrapping_sub(g(b, c, d))
+            .wrapping_sub(0x5A827999)
+    }
+
+    fn constrain(
+        a: u32,
+        b: u32,
+        c: u32,
+        d: u32,
+        m: &mut Vec<u32>,
+        i: usize,
+        s: u32,
+        constraints: &[Constraint],
+    ) -> u32 {
+        let mut next_a = phi1(a, b, c, d, m[i], s);
+        for Constraint(t, i) in constraints.iter() {
+            match t {
+                Eq => next_a ^= (next_a & (1 << i)) ^ (b & (1 << i)),
+                Zero => next_a ^= (next_a & (1 << i)) ^ 0,
+                One => next_a ^= (next_a & (1 << i)) ^ (1 << i),
+            }
+        }
+        m[i] = phi1_inv(a, b, c, d, next_a, s);
+        next_a
+    }
+
+    let random_message = random_bytes(64);
+    let mut m: Vec<u32> = Vec::new();
+    for chunk in random_message.as_chunks::<4>().0 {
+        let u = u32::from_le_bytes(*chunk);
+        m.push(u);
+    }
+
+    let a = 0x67452301u32;
+    let b = 0xefcdab89u32;
+    let c = 0x98badcfeu32;
+    let d = 0x10325476u32;
+    let mut a_vec: Vec<u32> = vec![a];
+    let mut b_vec: Vec<u32> = vec![b];
+    let mut c_vec: Vec<u32> = vec![c];
+    let mut d_vec: Vec<u32> = vec![d];
+
+    // round 1
+    let constraints = vec![Constraint(Eq, 6)];
+    let a = constrain(a, b, c, d, &mut m, 0, 3, &constraints);
+    a_vec.push(a);
+
+    // round 2
+    let constraints = vec![Constraint(Zero, 6), Constraint(Eq, 7), Constraint(Eq, 10)];
+    let d = constrain(d, a, b, c, &mut m, 1, 7, &constraints);
+    d_vec.push(d);
+
+    // round 3
+    let constraints = vec![
+        Constraint(One, 6),
+        Constraint(One, 7),
+        Constraint(Zero, 10),
+        Constraint(Eq, 25),
+    ];
+    let c = constrain(c, d, a, b, &mut m, 2, 11, &constraints);
+    c_vec.push(c);
+
+    // round 4
+    let constraints = vec![
+        Constraint(One, 6),
+        Constraint(Zero, 7),
+        Constraint(Zero, 10),
+        Constraint(Zero, 25),
+    ];
+    let b = constrain(b, c, d, a, &mut m, 3, 19, &constraints);
+    b_vec.push(b);
+
+    // round 5
+    let constraints = vec![
+        Constraint(One, 7),
+        Constraint(One, 10),
+        Constraint(Eq, 13),
+        Constraint(Zero, 25),
+    ];
+    let a = constrain(a, b, c, d, &mut m, 4, 3, &constraints);
+    a_vec.push(a);
+
+    // round 6
+    let constraints = vec![
+        Constraint(Zero, 13),
+        Constraint(Eq, 18),
+        Constraint(Eq, 19),
+        Constraint(Eq, 20),
+        Constraint(Eq, 21),
+        Constraint(One, 25),
+    ];
+    let d = constrain(d, a, b, c, &mut m, 5, 7, &constraints);
+    d_vec.push(d);
+
+    // round 7
+    let constraints = vec![
+        Constraint(Eq, 12),
+        Constraint(Zero, 13),
+        Constraint(Eq, 14),
+        Constraint(Zero, 18),
+        Constraint(Zero, 19),
+        Constraint(One, 20),
+        Constraint(Zero, 21),
+    ];
+    let c = constrain(c, d, a, b, &mut m, 6, 11, &constraints);
+    c_vec.push(c);
+
+    // round 8
+    let constraints = vec![
+        Constraint(One, 12),
+        Constraint(One, 13),
+        Constraint(Zero, 14),
+        Constraint(Eq, 16),
+        Constraint(Zero, 18),
+        Constraint(Zero, 19),
+        Constraint(Zero, 20),
+        Constraint(Zero, 21),
+    ];
+    let b = constrain(b, c, d, a, &mut m, 7, 19, &constraints);
+    b_vec.push(b);
+
+    // round 9
+    let constraints = vec![
+        Constraint(One, 12),
+        Constraint(One, 13),
+        Constraint(One, 14),
+        Constraint(Zero, 16),
+        Constraint(Zero, 18),
+        Constraint(Zero, 19),
+        Constraint(Zero, 20),
+        Constraint(One, 21),
+        Constraint(Eq, 22),
+        Constraint(Eq, 25),
+    ];
+    let a = constrain(a, b, c, d, &mut m, 8, 3, &constraints);
+    a_vec.push(a);
+
+    // round 10
+    let constraints = vec![
+        Constraint(One, 12),
+        Constraint(One, 13),
+        Constraint(One, 14),
+        Constraint(Zero, 16),
+        Constraint(Zero, 19),
+        Constraint(One, 20),
+        Constraint(One, 21),
+        Constraint(Zero, 22),
+        Constraint(One, 25),
+        Constraint(Eq, 29),
+    ];
+    let d = constrain(d, a, b, c, &mut m, 9, 7, &constraints);
+    d_vec.push(d);
+
+    // round 11
+    let constraints = vec![
+        Constraint(One, 16),
+        Constraint(Zero, 19),
+        Constraint(Zero, 20),
+        Constraint(Zero, 21),
+        Constraint(Zero, 22),
+        Constraint(Zero, 25),
+        Constraint(One, 29),
+        Constraint(Eq, 31),
+    ];
+    let c = constrain(c, d, a, b, &mut m, 10, 11, &constraints);
+    c_vec.push(c);
+
+    // round 12
+    let constraints = vec![
+        Constraint(Zero, 19),
+        Constraint(One, 20),
+        Constraint(One, 21),
+        Constraint(Eq, 22),
+        Constraint(One, 25),
+        Constraint(Zero, 29),
+        Constraint(Zero, 31),
+    ];
+    let b = constrain(b, c, d, a, &mut m, 11, 19, &constraints);
+    b_vec.push(b);
+
+    // round 13
+    let constraints = vec![
+        Constraint(Zero, 22),
+        Constraint(Zero, 25),
+        Constraint(Eq, 26),
+        Constraint(Eq, 28),
+        Constraint(One, 29),
+        Constraint(Zero, 31),
+    ];
+    let a = constrain(a, b, c, d, &mut m, 12, 3, &constraints);
+    a_vec.push(a);
+
+    // round 14
+    let constraints = vec![
+        Constraint(Zero, 22),
+        Constraint(Zero, 25),
+        Constraint(One, 26),
+        Constraint(One, 28),
+        Constraint(Zero, 29),
+        Constraint(One, 31),
+    ];
+    let d = constrain(d, a, b, c, &mut m, 13, 7, &constraints);
+    d_vec.push(d);
+
+    // round 15
+    let constraints = vec![
+        Constraint(Eq, 18),
+        Constraint(One, 22),
+        Constraint(One, 25),
+        Constraint(Zero, 26),
+        Constraint(Zero, 28),
+        Constraint(Zero, 29),
+    ];
+    let c = constrain(c, d, a, b, &mut m, 14, 11, &constraints);
+    c_vec.push(c);
+
+    // round 16
+    let constraints = vec![
+        Constraint(Zero, 18),
+        Constraint(Eq, 25),
+        Constraint(One, 26),
+        Constraint(One, 28),
+        Constraint(Zero, 29),
+        Constraint(Eq, 31),
+    ];
+    let b = constrain(b, c, d, a, &mut m, 15, 19, &constraints);
+    b_vec.push(b);
+
+    // a5
+    let mut a5 = phi2(a, b, c, d, m[0], 3);
+    a5 ^= (a5 & (1 << 18)) ^ (c & (1 << 18));
+    a5 ^= (a5 & (1 << 25)) ^ (1 << 25);
+    a5 ^= (a5 & (1 << 26)) ^ 0;
+    a5 ^= (a5 & (1 << 28)) ^ (1 << 28);
+    a5 ^= (a5 & (1 << 31)) ^ (1 << 31);
+    m[0] = phi2_inv(a, b, c, d, a5, 3);
+    a_vec[1] = phi1(a_vec[0], b_vec[0], c_vec[0], d_vec[0], m[0], 3);
+
+    m[1] = phi1_inv(d_vec[0], a_vec[1], b_vec[0], c_vec[0], d_vec[1], 7);
+    m[2] = phi1_inv(c_vec[0], d_vec[1], a_vec[1], b_vec[0], c_vec[1], 11);
+    m[3] = phi1_inv(b_vec[0], c_vec[1], d_vec[1], a_vec[1], b_vec[1], 19);
+    m[4] = phi1_inv(a_vec[1], b_vec[1], c_vec[1], d_vec[1], a_vec[2], 3);
+    a_vec.push(a5);
+    let a = a5;
+
+    // d5
+    let mut d5 = phi2(d, a, b, c, m[4], 5);
+    d5 ^= (d5 & (1 << 18)) ^ (a & (1 << 18));
+    d5 ^= (d5 & (1 << 25)) ^ (b & (1 << 25));
+    d5 ^= (d5 & (1 << 26)) ^ (b & (1 << 26));
+    d5 ^= (d5 & (1 << 28)) ^ (b & (1 << 28));
+    d5 ^= (d5 & (1 << 31)) ^ (b & (1 << 31));
+    m[4] = phi2_inv(d, a, b, c, d5, 5);
+    a_vec[2] = phi1(a_vec[1], b_vec[1], c_vec[1], d_vec[1], m[4], 3);
+
+    m[5] = phi1_inv(d_vec[1], a_vec[2], b_vec[1], c_vec[1], d_vec[2], 7);
+    m[6] = phi1_inv(c_vec[1], d_vec[2], a_vec[2], b_vec[1], c_vec[2], 11);
+    m[7] = phi1_inv(b_vec[1], c_vec[2], d_vec[2], a_vec[2], b_vec[2], 19);
+    m[8] = phi1_inv(a_vec[2], b_vec[2], c_vec[2], d_vec[2], a_vec[3], 3);
+    d_vec.push(d5);
+    let d = d5;
+
+    // c5
+    let mut c5 = phi2(c, d, a, b, m[8], 9);
+    c5 ^= (c5 & (1 << 25)) ^ (d & (1 << 25));
+    c5 ^= (c5 & (1 << 26)) ^ (d & (1 << 26));
+    c5 ^= (c5 & (1 << 28)) ^ (d & (1 << 28));
+    c5 ^= (c5 & (1 << 29)) ^ (d & (1 << 29));
+    c5 ^= (c5 & (1 << 31)) ^ (d & (1 << 31));
+    m[8] = phi2_inv(c, d, a, b, c5, 9);
+    a_vec[3] = phi1(a_vec[2], b_vec[2], c_vec[2], d_vec[2], m[8], 3);
+
+    m[9] = phi1_inv(d_vec[2], a_vec[3], b_vec[2], c_vec[2], d_vec[3], 7);
+    m[10] = phi1_inv(c_vec[2], d_vec[3], a_vec[3], b_vec[2], c_vec[3], 11);
+    m[11] = phi1_inv(b_vec[2], c_vec[3], d_vec[3], a_vec[3], b_vec[3], 19);
+    m[12] = phi1_inv(a_vec[3], b_vec[3], c_vec[3], d_vec[3], a_vec[4], 3);
+    c_vec.push(c5);
+    let c = c5;
+
+    m
 }

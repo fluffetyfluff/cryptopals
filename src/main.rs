@@ -116,6 +116,7 @@ fn set_7() {
     set_7_problem_52();
     set_7_problem_53();
     set_7_problem_54();
+    set_7_problem_55();
 }
 
 fn set_1_problem_1() {
@@ -1552,4 +1553,33 @@ fn set_7_problem_54() {
     let message_hash = aes_md::<2>(&message);
 
     println!("set 7 problem 54: message hash: {message_hash:?} target hash: {target_hash:?}");
+}
+
+fn set_7_problem_55() {
+    let collision;
+    loop {
+        let weak_message = weak_message();
+        let mut new_message = weak_message.clone();
+        new_message[1] = new_message[1].wrapping_add(1 << 31);
+        new_message[2] = new_message[2].wrapping_add(1 << 31).wrapping_sub(1 << 28);
+        new_message[12] = new_message[12].wrapping_sub(1 << 16);
+
+        let mut weak_bytes: Vec<u8> = Vec::new();
+        let mut new_bytes: Vec<u8> = Vec::new();
+        for chunk in weak_message {
+            weak_bytes.extend_from_slice(&chunk.to_le_bytes());
+        }
+        for chunk in new_message {
+            new_bytes.extend_from_slice(&chunk.to_le_bytes());
+        }
+        if md4(&weak_bytes) == md4(&new_bytes) {
+            collision = weak_bytes;
+            break;
+        }
+    }
+
+    println!(
+        "set 7 problem 55: collision: {}",
+        hex_encode(&md4(&collision))
+    );
 }
