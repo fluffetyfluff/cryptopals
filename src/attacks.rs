@@ -695,7 +695,6 @@ pub fn weak_message() -> Vec<u32> {
     m[11] = phi1_inv(b_vec[2], c_vec[3], d_vec[3], a_vec[3], b_vec[3], 19);
     m[12] = phi1_inv(a_vec[3], b_vec[3], c_vec[3], d_vec[3], a_vec[4], 3);
     c_vec.push(c5);
-    let c = c5;
 
     m
 }

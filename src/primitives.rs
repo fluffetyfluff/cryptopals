@@ -9,6 +9,7 @@ use crypto_bigint::{
 };
 use crypto_primes::{Flavor, random_prime};
 use rand::rng;
+use rc4::{Rc4, StreamCipher};
 
 use crate::oracles::random_biguint;
 
@@ -645,4 +646,11 @@ pub fn aes_md_extend_block<const N: usize>(block: &Block, h: &[u8; N]) -> [u8; N
     let mut expanded = [0x00; 16];
     expanded[..N].copy_from_slice(h);
     aes_128_encrypt(&block, &expanded)[..N].try_into().unwrap()
+}
+
+pub fn rc4_keystream(key: &[u8], n: usize) -> Vec<u8> {
+    let mut rc = Rc4::new_from_slice(key).unwrap();
+    let mut keystream = vec![0x00; n];
+    rc.write_keystream(&mut keystream);
+    keystream
 }

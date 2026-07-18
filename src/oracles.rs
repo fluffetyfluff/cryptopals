@@ -5,6 +5,7 @@ use flate2::write::ZlibEncoder;
 use itertools::Itertools;
 use rand::seq::IteratorRandom;
 use rand::{random, random_bool, random_range, rng};
+use rc4::{KeyInit, Rc4, StreamCipher};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::sync::LazyLock;
@@ -316,4 +317,15 @@ pub fn ctr_compression_oracle(request: &str) -> usize {
 pub fn cbc_compression_oracle(request: &str) -> usize {
     let plaintext = format_and_compress(request);
     pkcs7_pad(&plaintext).len() // pad and return length, still don't need to encrypt
+}
+
+pub fn rc4_random_key_oracle(prefix: &[u8]) -> Vec<u8> {
+    let cookie = b64_decode("QkUgU1VSRSBUTyBEUklOSyBZT1VSIE9WQUxUSU5F");
+    let mut plaintext = Vec::new();
+    plaintext.extend_from_slice(prefix);
+    plaintext.extend_from_slice(&cookie);
+    let key = random_block();
+    let mut rc = Rc4::new_from_slice(&key).unwrap();
+    rc.apply_keystream(&mut plaintext);
+    plaintext
 }

@@ -117,6 +117,7 @@ fn set_7() {
     set_7_problem_53();
     set_7_problem_54();
     set_7_problem_55();
+    set_7_problem_56();
 }
 
 fn set_1_problem_1() {
@@ -1582,4 +1583,46 @@ fn set_7_problem_55() {
         "set 7 problem 55: collision: {}",
         hex_encode(&md4(&collision))
     );
+}
+
+fn set_7_problem_56() {
+    let mut known = vec![0x00u8; 32];
+
+    for offset in 0..16 {
+        let mut occurrences_16: HashMap<u8, u32> = HashMap::new();
+        let mut occurrences_32: HashMap<u8, u32> = HashMap::new();
+        for _ in 0..3000000 {
+            let p = rc4_random_key_oracle(&vec![0x00u8; offset]);
+            if let Some(&v) = occurrences_16.get(&p[15]) {
+                occurrences_16.insert(p[15], v + 1);
+            } else {
+                occurrences_16.insert(p[15], 1);
+            }
+            if offset > 2 {
+                if let Some(&v) = occurrences_32.get(&p[31]) {
+                    occurrences_32.insert(p[31], v + 1);
+                } else {
+                    occurrences_32.insert(p[31], 1);
+                }
+            }
+        }
+
+        let i = 15 - offset;
+        let peak_16 = occurrences_16
+            .iter()
+            .max_by(|a, b| a.1.cmp(&b.1))
+            .map(|(k, _v)| k)
+            .unwrap();
+        known[i] = peak_16 ^ 0xF0;
+        if offset > 2 {
+            let peak_32 = occurrences_32
+                .iter()
+                .max_by(|a, b| a.1.cmp(&b.1))
+                .map(|(k, _v)| k)
+                .unwrap();
+            known[i + 16] = peak_32 ^ 0xE0;
+        }
+    }
+
+    println!("set 7 problem 56: {}", String::from_utf8_lossy(&known));
 }
