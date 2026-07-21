@@ -1639,7 +1639,7 @@ fn set_8_problem_57() {
          0E543A89B0B12BA61062411FCF3D29C6AB8C3CE6DAC7D2C9F7F0EBD3B7878AAF",
     );
     let q = bigint_hex("B1B914DE773DFCC8BE82251A2AB4F339");
-    let server = DhSubgroupServer::new(&g, &p, &NonZero::new(q).unwrap());
+    let server = DhSubgroupServer::new(&p, &NonZero::new(q).unwrap());
 
     let j = bigint_hex(
         "C603C3A480AEABFEBBEACE077FCD6F114C33CFD660FA70EE6B2D4859205EE6EA\
@@ -1691,10 +1691,17 @@ fn set_8_problem_57() {
             guess = guess.wrapping_add(&one);
         }
         residues.push(guess);
-        println!("{factor} {guess}");
     }
 
     let secret = crt(&residues, &small_factors);
 
-    println!("set 8 problem 57: {secret}");
+    assert!(
+        server.sign(b"my clan increase like black unemployment", &two)
+            == DhSubgroupServer::mac(
+                b"my clan increase like black unemployment",
+                &modexp(&two, &secret, &p)
+            )
+    );
+
+    println!("set 8 problem 57: ok");
 }

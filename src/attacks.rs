@@ -702,7 +702,7 @@ pub fn weak_message() -> Vec<u32> {
 
 pub fn crt(residues: &[U2048], primes: &[NonZero<U2048>]) -> U2048 {
     let mut q = U2048::ONE;
-    for &r in residues {
+    for &r in primes {
         q = q.wrapping_mul(&r);
     }
     let q = NonZero::new(q).unwrap();

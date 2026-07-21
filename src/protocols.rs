@@ -208,9 +208,8 @@ pub struct DhSubgroupServer {
 }
 
 impl DhSubgroupServer {
-    pub fn new(g: &U2048, p: &OddUint<{ U2048::LIMBS }>, q: &NonZero<U2048>) -> Self {
+    pub fn new(p: &OddUint<{ U2048::LIMBS }>, q: &NonZero<U2048>) -> Self {
         let secret = random_biguint(q);
-        let secret = modexp(g, &secret, &p);
         let p = p.clone();
         Self { secret, p }
     }
