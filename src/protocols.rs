@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use crypto_bigint::{Integer, OddUint, U2048};
+use crypto_bigint::{Integer, NonZero, OddUint, U2048};
+use hmac::{Hmac, Mac};
 use openssl::sha::sha256;
+use rc4::KeyInit;
+use sha2::Sha256;
 
 use crate::{oracles::*, primitives::*};
 
@@ -196,5 +199,30 @@ impl CbcMacServer {
     pub fn verify(&self, message: &[u8], mac: &Block) -> bool {
         let recalc_mac = self.mac(message);
         recalc_mac == *mac
+    }
+}
+
+pub struct DhSubgroupServer {
+    secret: U2048,
+    p: OddUint<{ U2048::LIMBS }>,
+}
+
+impl DhSubgroupServer {
+    pub fn new(g: &U2048, p: &OddUint<{ U2048::LIMBS }>, q: &NonZero<U2048>) -> Self {
+        let secret = random_biguint(q);
+        let secret = modexp(g, &secret, &p);
+        let p = p.clone();
+        Self { secret, p }
+    }
+
+    pub fn sign(&self, m: &[u8], h: &U2048) -> [u8; 32] {
+        let shared_secret = modexp(h, &self.secret, &self.p);
+        DhSubgroupServer::mac(m, &shared_secret)
+    }
+
+    pub fn mac(m: &[u8], key: &U2048) -> [u8; 32] {
+        let mut hmac = Hmac::<Sha256>::new_from_slice(&key.to_be_bytes()).unwrap();
+        hmac.update(m);
+        hmac.finalize().into_bytes().into()
     }
 }

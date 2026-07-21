@@ -1,4 +1,5 @@
 use clap::Parser;
+use crypto_bigint::DivVartime;
 use crypto_bigint::{NonZero, OddUint};
 use cryptopals::attacks::*;
 use cryptopals::oracles::*;
@@ -34,13 +35,9 @@ fn main() {
         5 => set_5(),
         6 => set_6(),
         7 => set_7(),
-        8 => unimplemented(),
+        8 => set_8(),
         _ => (),
     }
-}
-
-fn unimplemented() {
-    println!("Not yet implemented");
 }
 
 fn set_1() {
@@ -118,6 +115,10 @@ fn set_7() {
     set_7_problem_54();
     set_7_problem_55();
     set_7_problem_56();
+}
+
+fn set_8() {
+    set_8_problem_57();
 }
 
 fn set_1_problem_1() {
@@ -1625,4 +1626,75 @@ fn set_7_problem_56() {
     }
 
     println!("set 7 problem 56: {}", String::from_utf8_lossy(&known));
+}
+
+fn set_8_problem_57() {
+    let p = bigint_hex(
+        "8977C3217DA1F838B8D24B4A790DE8FC8E35AD5483E463028EF9BBF9AF23A9BD\
+         1231EBA9AC7E44363D8311D610B09AA224A023268EE8A60AC484FD9381962563",
+    );
+    let p = OddUint::new(p).unwrap();
+    let g = bigint_hex(
+        "572AFF4A93EC6214C1036C62E1818FE5E4E1D6DB635C1B12D9572203C47D241A\
+         0E543A89B0B12BA61062411FCF3D29C6AB8C3CE6DAC7D2C9F7F0EBD3B7878AAF",
+    );
+    let q = bigint_hex("B1B914DE773DFCC8BE82251A2AB4F339");
+    let server = DhSubgroupServer::new(&g, &p, &NonZero::new(q).unwrap());
+
+    let j = bigint_hex(
+        "C603C3A480AEABFEBBEACE077FCD6F114C33CFD660FA70EE6B2D4859205EE6EA\
+        36CA0A2774C44BCD5B41A3FE99428672",
+    );
+    let mut j = j.div_vartime(&NonZero::new(bigint(18)).unwrap());
+
+    let two = bigint(2);
+    let one = bigint(1);
+    let zero = bigint(0);
+    let mut small_factors = vec![NonZero::new(two).unwrap()];
+    let mut test_factor = bigint(5);
+    let upper_limit = bigint(65536);
+    loop {
+        let (div, rem) = j.div_rem(&NonZero::new(test_factor).unwrap());
+        if rem == zero {
+            j = div;
+            small_factors.push(NonZero::new(test_factor).unwrap());
+        }
+        test_factor = test_factor.wrapping_add(&two);
+        if test_factor > upper_limit {
+            break;
+        }
+    }
+
+    let mut residues = Vec::new();
+    for factor in small_factors.iter() {
+        let mut h;
+        loop {
+            h = modexp(
+                &random_biguint(p.as_nz_ref()),
+                &p.wrapping_sub(&one).wrapping_div_vartime(factor),
+                &p,
+            );
+            if h != one {
+                break;
+            }
+        }
+        let signature = server.sign(b"crazy flamboyant for the rap enjoyment", &h);
+
+        let mut guess = one;
+        loop {
+            let bob_secret = modexp(&h, &guess, &p);
+            if DhSubgroupServer::mac(b"crazy flamboyant for the rap enjoyment", &bob_secret)
+                == signature
+            {
+                break;
+            }
+            guess = guess.wrapping_add(&one);
+        }
+        residues.push(guess);
+        println!("{factor} {guess}");
+    }
+
+    let secret = crt(&residues, &small_factors);
+
+    println!("set 8 problem 57: {secret}");
 }

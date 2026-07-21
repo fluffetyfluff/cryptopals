@@ -1,6 +1,7 @@
-use crypto_bigint::OddUint;
+use crypto_bigint::{DivVartime, OddUint};
 use crypto_bigint::{NonZero, U2048};
 use std::collections::HashMap;
+use std::iter::zip;
 
 use crate::language::*;
 use crate::oracles::*;
@@ -697,4 +698,21 @@ pub fn weak_message() -> Vec<u32> {
     c_vec.push(c5);
 
     m
+}
+
+pub fn crt(residues: &[U2048], primes: &[NonZero<U2048>]) -> U2048 {
+    let mut q = U2048::ONE;
+    for &r in residues {
+        q = q.wrapping_mul(&r);
+    }
+    let q = NonZero::new(q).unwrap();
+    let mut n = U2048::ZERO;
+
+    for (r, p) in zip(residues, primes) {
+        let q_div = q.div_vartime(p);
+        let y = modinv(&q_div.rem(p), p).unwrap();
+        let t = r.mul_mod_vartime(&q_div, &q).mul_mod_vartime(&y, &q);
+        n = n.add_mod(&t, &q);
+    }
+    n
 }
