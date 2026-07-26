@@ -716,3 +716,61 @@ pub fn crt(residues: &[U2048], primes: &[NonZero<U2048>]) -> U2048 {
     }
     n
 }
+
+pub fn kangaroo(
+    lower: &U2048,
+    upper: &U2048,
+    y: &U2048,
+    g: &U2048,
+    p: &OddUint<{ U2048::LIMBS }>,
+) -> Result<U2048, ()> {
+    let width = upper.wrapping_sub(lower);
+    let bits = width.bits();
+    let k = (bits / 2).max(1);
+    let k_nz = NonZero::new(bigint(k as u64)).unwrap();
+
+    fn f(y: &U2048, k_nz: &NonZero<U2048>) -> U2048 {
+        let rem = y.rem_vartime(&k_nz);
+        U2048::ONE.shl_vartime(rem.as_words()[0] as u32)
+    }
+
+    let mut g_fs: HashMap<U2048, U2048> = HashMap::new();
+    for i in 0..k {
+        let f = f(&bigint(i as u64), &k_nz);
+        let g_f = modexp(g, &f, p);
+        g_fs.insert(f, g_f);
+    }
+    let g_fs = g_fs;
+
+    let n = 4 * (1 << (bits / 2));
+    let p_nz = p.as_nz_ref();
+
+    let mut x_t = bigint(0);
+    let mut y_t = modexp(g, upper, p);
+
+    for _ in 0..n {
+        let f = f(&y_t, &k_nz);
+        x_t = x_t.wrapping_add(&f);
+        let g_f = g_fs.get(&f).unwrap();
+        y_t = y_t.mul_mod_vartime(g_f, p_nz);
+    }
+
+    println!("first loop done. x_t: {}", x_t.as_words()[0] as u64);
+
+    let mut x_w = bigint(0);
+    let mut y_w = y.clone();
+    let limit = upper.wrapping_sub(lower).wrapping_add(&x_t);
+
+    while x_w < limit {
+        let f = f(&y_w, &k_nz);
+        x_w = x_w.wrapping_add(&f);
+        let g_f = g_fs.get(&f).unwrap();
+        y_w = y_w.mul_mod_vartime(g_f, p_nz);
+
+        if y_w == y_t {
+            return Ok(upper.wrapping_add(&x_t).wrapping_sub(&x_w));
+        }
+    }
+
+    Err(())
+}

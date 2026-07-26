@@ -119,6 +119,7 @@ fn set_7() {
 
 fn set_8() {
     set_8_problem_57();
+    set_8_problem_58();
 }
 
 fn set_1_problem_1() {
@@ -1634,7 +1635,7 @@ fn set_8_problem_57() {
          1231EBA9AC7E44363D8311D610B09AA224A023268EE8A60AC484FD9381962563",
     );
     let p = OddUint::new(p).unwrap();
-    let g = bigint_hex(
+    let _g = bigint_hex(
         "572AFF4A93EC6214C1036C62E1818FE5E4E1D6DB635C1B12D9572203C47D241A\
          0E543A89B0B12BA61062411FCF3D29C6AB8C3CE6DAC7D2C9F7F0EBD3B7878AAF",
     );
@@ -1704,4 +1705,39 @@ fn set_8_problem_57() {
     );
 
     println!("set 8 problem 57: ok");
+}
+
+fn set_8_problem_58() {
+    let p = bigint_hex(
+        "DB020645333C52A8D8BD194950CBD48DDF752BAE8F346150C6410DBA6BEFDBC6\
+         CF93D7CFC4568FFB017B28BEF26242493C606596B7FF8625055F73E888B86117",
+    );
+    let p = OddUint::new(p).unwrap();
+    let g = bigint_hex(
+        "BE4ED76592B0FC7A8F2A160840C664BD8A4E0DFF8DED0B2ED0843714C3B7BD12\
+         EE50CB56A829A999CA95714A520BA0C080E7A5866309E4BBCCE1F897EAFB77D",
+    );
+
+    let y = bigint_hex(
+        "942A736AF686E3801BC08A56D10104FB3AA44BEB512748EFB5C976C82F9AF8B2\
+         E487BBF64D6AA90F665D6E0215764CD84A048123CCBE061136C103F6E2068E0F",
+    );
+
+    let lower = bigint(0);
+    let upper = bigint(1).shl_vartime(20);
+    let k = kangaroo(&lower, &upper, &y, &g, &p).unwrap();
+    println!("set 8 problem 58: {0}", k.as_words()[0] as u32);
+
+    let y = bigint_hex(
+        "B343F993B3BA3A41524BDF879143E09EE677C25C4A68CFD2031197C1BC4AFEAA\
+         8CE80375F4CABE86EABE9D8008DCA2EF1C15C260CEE882730F43862CF40423E5",
+    );
+    let upper = bigint(1).shl_vartime(40);
+    let k2 = kangaroo(&lower, &upper, &y, &g, &p).unwrap();
+
+    println!(
+        "set 8 problem 58: {0} {1}",
+        k.as_words()[0] as u32,
+        k2.as_words()[0] as u32
+    );
 }
