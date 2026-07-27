@@ -1726,7 +1726,6 @@ fn set_8_problem_58() {
     let lower = bigint(0);
     let upper = bigint(1).shl_vartime(20);
     let k = kangaroo(&lower, &upper, &y, &g, &p).unwrap();
-    println!("set 8 problem 58: {0}", k.as_words()[0] as u32);
 
     let y = bigint_hex(
         "B343F993B3BA3A41524BDF879143E09EE677C25C4A68CFD2031197C1BC4AFEAA\

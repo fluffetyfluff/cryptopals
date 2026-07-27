@@ -1,4 +1,4 @@
-use crypto_bigint::{DivVartime, OddUint};
+use crypto_bigint::{DivVartime, Limb, OddUint, Reciprocal};
 use crypto_bigint::{NonZero, U2048};
 use std::collections::HashMap;
 use std::iter::zip;
@@ -725,47 +725,41 @@ pub fn kangaroo(
     p: &OddUint<{ U2048::LIMBS }>,
 ) -> Result<U2048, ()> {
     let width = upper.wrapping_sub(lower);
-    let bits = width.bits();
-    let k = (bits / 2).max(1);
-    let k_nz = NonZero::new(bigint(k as u64)).unwrap();
+    let target = width.bits() / 2;
+    let k = target + (target as f64).log2().ceil() as u32 + 1;
+    let reciprocal = Reciprocal::new(NonZero::new(Limb::from(k)).unwrap());
+    let n = 1 << ((width.bits() / 2) + 2);
 
-    fn f(y: &U2048, k_nz: &NonZero<U2048>) -> U2048 {
-        let rem = y.rem_vartime(&k_nz);
-        U2048::ONE.shl_vartime(rem.as_words()[0] as u32)
-    }
-
-    let mut g_fs: HashMap<U2048, U2048> = HashMap::new();
+    let mut g_fs: Vec<U2048> = Vec::new();
     for i in 0..k {
-        let f = f(&bigint(i as u64), &k_nz);
-        let g_f = modexp(g, &f, p);
-        g_fs.insert(f, g_f);
+        let f = U2048::ONE.shl_vartime(i);
+        g_fs.push(modexp(g, &f, p));
     }
     let g_fs = g_fs;
 
-    let n = 4 * (1 << (bits / 2));
+    let index = |y: &U2048| y.rem_limb_with_reciprocal(&reciprocal).0 as u32;
+    let f = |i: u32| U2048::ONE.shl_vartime(i);
+    let g_f = |i: u32| g_fs[i as usize];
+
     let p_nz = p.as_nz_ref();
 
     let mut x_t = bigint(0);
     let mut y_t = modexp(g, upper, p);
 
     for _ in 0..n {
-        let f = f(&y_t, &k_nz);
-        x_t = x_t.wrapping_add(&f);
-        let g_f = g_fs.get(&f).unwrap();
-        y_t = y_t.mul_mod_vartime(g_f, p_nz);
+        let i = index(&y_t);
+        x_t = x_t.wrapping_add(&f(i));
+        y_t = y_t.mul_mod_vartime(&g_f(i), p_nz);
     }
-
-    println!("first loop done. x_t: {}", x_t.as_words()[0] as u64);
 
     let mut x_w = bigint(0);
     let mut y_w = y.clone();
     let limit = upper.wrapping_sub(lower).wrapping_add(&x_t);
 
     while x_w < limit {
-        let f = f(&y_w, &k_nz);
-        x_w = x_w.wrapping_add(&f);
-        let g_f = g_fs.get(&f).unwrap();
-        y_w = y_w.mul_mod_vartime(g_f, p_nz);
+        let i = index(&y_w);
+        x_w = x_w.wrapping_add(&f(i));
+        y_w = y_w.mul_mod_vartime(&g_f(i), p_nz);
 
         if y_w == y_t {
             return Ok(upper.wrapping_add(&x_t).wrapping_sub(&x_w));
