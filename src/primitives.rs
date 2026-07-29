@@ -654,3 +654,178 @@ pub fn rc4_keystream(key: &[u8], n: usize) -> Vec<u8> {
     rc.write_keystream(&mut keystream);
     keystream
 }
+
+pub trait GroupElement: Clone {
+    fn add(&self, rhs: &Self) -> Self;
+
+    fn identity(&self) -> Self;
+
+    fn inverse(&self) -> Self;
+
+    fn mul(&self, rhs: &U2048) -> Self {
+        let mut ans = self.identity();
+        let mut square = self.clone();
+
+        let bits = rhs.bits_vartime();
+        for i in 0..bits {
+            if (rhs.shr_vartime(i).as_words()[0] & 1) == 1 {
+                ans = ans.add(&square);
+            };
+            square = square.add(&square);
+        }
+        ans
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct PrimeGroup {
+    p: OddUint<{ U2048::LIMBS }>,
+}
+
+#[derive(Clone, PartialEq)]
+pub struct PrimeGroupPoint<'a> {
+    x: U2048,
+    group: &'a PrimeGroup,
+}
+
+impl GroupElement for PrimeGroupPoint<'_> {
+    fn add(&self, rhs: &Self) -> Self {
+        assert!(self.group == rhs.group);
+        let x = self.x.mul_mod_vartime(&rhs.x, self.group.p.as_nz_ref());
+        Self {
+            x,
+            group: self.group,
+        }
+    }
+
+    fn identity(&self) -> Self {
+        Self {
+            x: U2048::ONE,
+            group: self.group,
+        }
+    }
+
+    fn inverse(&self) -> Self {
+        let x = modinv(&self.x, self.group.p.as_nz_ref()).unwrap();
+        Self {
+            x,
+            group: self.group,
+        }
+    }
+
+    fn mul(&self, rhs: &U2048) -> Self {
+        let x = modexp(&self.x, rhs, &self.group.p);
+        Self {
+            x,
+            group: self.group,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct EllipticCurve {
+    a: U2048,
+    b: U2048,
+    p: OddUint<{ U2048::LIMBS }>,
+}
+
+impl EllipticCurve {
+    pub fn new(a: U2048, b: U2048, p: OddUint<{ U2048::LIMBS }>) -> Self {
+        Self { a, b, p }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub enum Point {
+    O,
+    Point { x: U2048, y: U2048 },
+}
+
+#[derive(Clone, PartialEq)]
+pub struct EllipticCurvePoint<'a> {
+    point: Point,
+    curve: &'a EllipticCurve,
+}
+
+impl<'a> EllipticCurvePoint<'a> {
+    pub fn new(point: Point, curve: &'a EllipticCurve) -> Self {
+        Self { point, curve }
+    }
+}
+
+impl GroupElement for EllipticCurvePoint<'_> {
+    fn add(&self, rhs: &Self) -> Self {
+        assert!(self.curve == rhs.curve);
+        let three = bigint(3);
+        let two = bigint(2);
+        let p_nz = self.curve.p.as_nz_ref();
+
+        if let Point::Point { x, y } = self.point {
+            let x1 = x;
+            let y1 = y;
+            if let Point::Point { x, y } = rhs.point {
+                let x2 = x;
+                let y2 = y;
+                if *self == rhs.inverse() {
+                    return Self {
+                        point: Point::O,
+                        curve: self.curve,
+                    };
+                };
+
+                let m = if x1 == x2 && y1 == y2 {
+                    let x1_sq = x1.mul_mod(&x1, p_nz);
+                    let three_x1_sq = x1_sq.mul_mod(&three, p_nz);
+                    let num = three_x1_sq.add_mod(&self.curve.a, p_nz);
+
+                    let den = y1.mul_mod(&two, p_nz);
+                    let den_inv = modinv(&den, p_nz).unwrap();
+
+                    num.mul_mod(&den_inv, p_nz)
+                } else {
+                    let num = y2.sub_mod(&y1, p_nz);
+                    let den = x2.sub_mod(&x1, p_nz);
+                    let den_inv = modinv(&den, p_nz).unwrap();
+
+                    num.mul_mod(&den_inv, p_nz)
+                };
+
+                let m_sq = m.mul_mod(&m, p_nz);
+                let x3 = m_sq.sub_mod(&x1, p_nz).sub_mod(&x2, p_nz);
+
+                let x1_x3 = x1.sub_mod(&x3, p_nz);
+                let y3 = m.mul_mod(&x1_x3, p_nz).sub_mod(&y1, p_nz);
+
+                Self {
+                    point: Point::Point { x: x3, y: y3 },
+                    curve: self.curve,
+                }
+            } else {
+                self.clone()
+            }
+        } else {
+            rhs.clone()
+        }
+    }
+
+    fn identity(&self) -> Self {
+        Self {
+            point: Point::O,
+            curve: self.curve,
+        }
+    }
+
+    fn inverse(&self) -> Self {
+        if let Point::Point { x, y } = self.point {
+            let p_nz = self.curve.p.as_nz_ref();
+            let y = U2048::ZERO.sub_mod(&y, p_nz);
+            let point = Point::Point { x, y };
+            Self {
+                point,
+                curve: self.curve,
+            }
+        } else {
+            self.clone()
+        }
+    }
+}

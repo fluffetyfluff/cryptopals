@@ -120,6 +120,7 @@ fn set_7() {
 fn set_8() {
     set_8_problem_57();
     set_8_problem_58();
+    set_8_problem_59();
 }
 
 fn set_1_problem_1() {
@@ -1739,4 +1740,24 @@ fn set_8_problem_58() {
         k.as_words()[0] as u32,
         k2.as_words()[0] as u32
     );
+}
+
+fn set_8_problem_59() {
+    let p = bigint_hex("B005107C61647006804A0C2979DF3E8D");
+    let p = OddUint::new(p).unwrap();
+    let a = bigint_hex("B005107C61647006804A0C2979DDCB42");
+    let b = bigint(11279326);
+
+    let g_x = bigint(182);
+    let g_y = bigint_hex("405656FE09D8D8EE91D63369521882A3");
+
+    let order = bigint_hex("1600A20F8C2C8E00A3F1911303382D1F");
+
+    let curve = EllipticCurve::new(a, b, p);
+    let base_point = Point::Point { x: g_x, y: g_y };
+    let base_point = EllipticCurvePoint::new(base_point, &curve);
+
+    assert!(base_point.mul(&order) == base_point.identity());
+
+    println!("set 8 problem 59: ok");
 }
