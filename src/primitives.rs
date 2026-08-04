@@ -662,13 +662,13 @@ pub trait GroupElement: Clone {
 
     fn inverse(&self) -> Self;
 
-    fn mul(&self, rhs: &U2048) -> Self {
+    fn mul(&self, pow: &U2048) -> Self {
         let mut ans = self.identity();
         let mut square = self.clone();
 
-        let bits = rhs.bits_vartime();
+        let bits = pow.bits_vartime();
         for i in 0..bits {
-            if (rhs.shr_vartime(i).as_words()[0] & 1) == 1 {
+            if (pow.shr_vartime(i).as_words()[0] & 1) == 1 {
                 ans = ans.add(&square);
             };
             square = square.add(&square);
@@ -713,8 +713,8 @@ impl GroupElement for PrimeGroupPoint<'_> {
         }
     }
 
-    fn mul(&self, rhs: &U2048) -> Self {
-        let x = modexp(&self.x, rhs, &self.group.p);
+    fn mul(&self, pow: &U2048) -> Self {
+        let x = modexp(&self.x, pow, &self.group.p);
         Self {
             x,
             group: self.group,
@@ -826,6 +826,88 @@ impl GroupElement for EllipticCurvePoint<'_> {
             }
         } else {
             self.clone()
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct MontgomeryCurve {
+    a: U2048,
+    b: U2048,
+    p: OddUint<{ U2048::LIMBS }>,
+}
+
+impl MontgomeryCurve {
+    pub fn new(a: U2048, b: U2048, p: OddUint<{ U2048::LIMBS }>) -> Self {
+        Self { a, b, p }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct MontgomeryCurvePoint<'a> {
+    pub u: U2048,
+    curve: &'a MontgomeryCurve,
+}
+
+impl<'a> MontgomeryCurvePoint<'a> {
+    pub fn new(u: U2048, curve: &'a MontgomeryCurve) -> Self {
+        Self { u, curve }
+    }
+}
+
+impl MontgomeryCurvePoint<'_> {
+    pub fn ladder(&self, pow: &U2048) -> Self {
+        fn cswap(a: U2048, b: U2048, condition: bool) -> (U2048, U2048) {
+            if condition { (b, a) } else { (a, b) }
+        }
+
+        let p_nz = self.curve.p.as_nz_ref();
+        let a = self.curve.a;
+        let (mut u2, mut w2) = (U2048::ONE, U2048::ZERO);
+        let (mut u3, mut w3) = (self.u, U2048::ONE);
+
+        let len = pow.bits_vartime();
+        for i in (0..len).rev() {
+            let cond = (pow.shr_vartime(i) & U2048::ONE) == U2048::ONE;
+            (u2, u3) = cswap(u2, u3, cond);
+            (w2, w3) = cswap(w2, w3, cond);
+            let (u3_new, w3_new) = (
+                u2.mul_mod_vartime(&u3, p_nz)
+                    .sub_mod(&w2.mul_mod_vartime(&w3, p_nz), p_nz)
+                    .square_mod_vartime(p_nz),
+                self.u.mul_mod_vartime(
+                    &u2.mul_mod_vartime(&w3, p_nz)
+                        .sub_mod(&w2.mul_mod_vartime(&u3, p_nz), p_nz)
+                        .square_mod_vartime(p_nz),
+                    p_nz,
+                ),
+            );
+            (u3, w3) = (u3_new, w3_new);
+            let (u2_new, w2_new) = (
+                u2.square_mod_vartime(p_nz)
+                    .sub_mod(&w2.square_mod_vartime(p_nz), p_nz)
+                    .square_mod_vartime(p_nz),
+                u2.square_mod_vartime(p_nz)
+                    .add_mod(&w2.square_mod_vartime(p_nz), p_nz)
+                    .add_mod(
+                        &u2.mul_mod_vartime(&w2, p_nz).mul_mod_vartime(&a, p_nz),
+                        p_nz,
+                    )
+                    .mul_mod_vartime(&bigint(4), p_nz)
+                    .mul_mod_vartime(&u2, p_nz)
+                    .mul_mod_vartime(&w2, p_nz),
+            );
+            (u2, w2) = (u2_new, w2_new);
+            (u2, u3) = cswap(u2, u3, cond);
+            (w2, w3) = cswap(w2, w3, cond);
+        }
+
+        let u = modexp(&w2, &self.curve.p.sub_mod(&bigint(2), p_nz), &self.curve.p)
+            .mul_mod_vartime(&u2, p_nz);
+
+        Self {
+            u,
+            curve: self.curve,
         }
     }
 }

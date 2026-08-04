@@ -121,6 +121,7 @@ fn set_8() {
     set_8_problem_57();
     set_8_problem_58();
     set_8_problem_59();
+    set_8_problem_60();
 }
 
 fn set_1_problem_1() {
@@ -1760,4 +1761,18 @@ fn set_8_problem_59() {
     assert!(base_point.mul(&order) == base_point.identity());
 
     println!("set 8 problem 59: ok");
+}
+
+fn set_8_problem_60() {
+    let p = bigint_hex("B005107C61647006804A0C2979DF3E8D");
+    let p = OddUint::new(p).unwrap();
+    let a = bigint(534);
+    let b = bigint(1);
+    let order = bigint_hex("1600A20F8C2C8E00A3F1911303382D1F");
+
+    let curve = MontgomeryCurve::new(a, b, p);
+    let base_point = MontgomeryCurvePoint::new(bigint(4), &curve);
+
+    assert!(base_point.ladder(&order).u == bigint(0));
+    println!("set 8 problem 60: ok");
 }
