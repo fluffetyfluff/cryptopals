@@ -662,6 +662,8 @@ pub trait GroupElement: Clone {
 
     fn inverse(&self) -> Self;
 
+    fn coord(&self) -> Option<U2048>;
+
     fn mul(&self, pow: &U2048) -> Self {
         let mut ans = self.identity();
         let mut square = self.clone();
@@ -711,6 +713,10 @@ impl GroupElement for PrimeGroupPoint<'_> {
             x,
             group: self.group,
         }
+    }
+
+    fn coord(&self) -> Option<U2048> {
+        Some(self.x)
     }
 
     fn mul(&self, pow: &U2048) -> Self {
@@ -828,6 +834,13 @@ impl GroupElement for EllipticCurvePoint<'_> {
             self.clone()
         }
     }
+
+    fn coord(&self) -> Option<U2048> {
+        match self.point {
+            Point::O => None,
+            Point::Point { x, .. } => Some(x),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -909,5 +922,58 @@ impl MontgomeryCurvePoint<'_> {
             u,
             curve: self.curve,
         }
+    }
+}
+
+pub fn ecdsa_sign(
+    d: &U2048,
+    n: &NonZero<U2048>,
+    g: &EllipticCurvePoint,
+    message: &[u8],
+) -> (U2048, U2048) {
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+
+    loop {
+        let k = random_biguint(n);
+        let r = match g.mul(&k).coord() {
+            Some(r) => r.rem_vartime(n),
+            None => {
+                continue;
+            }
+        };
+
+        let k_1 = modinv(&k, n).unwrap();
+        let hxr = hash.add_mod(&d.mul_mod(&r, n), n);
+        let s = k_1.mul_mod_vartime(&hxr, n);
+        if s != U2048::ZERO {
+            return (r, s);
+        }
+    }
+}
+
+pub fn ecdsa_verify(
+    q: &EllipticCurvePoint,
+    signature: &(U2048, U2048),
+    n: &NonZero<U2048>,
+    g: &EllipticCurvePoint,
+    message: &[u8],
+) -> bool {
+    let (r, s) = signature;
+    if *r == U2048::ZERO || *s == U2048::ZERO {
+        return false;
+    }
+
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+
+    let w = modinv(s, n).unwrap();
+    let u1 = hash.mul_mod(&w, n);
+    let u2 = r.mul_mod(&w, n);
+    if let Some(v) = g.mul(&u1).add(&q.mul(&u2)).coord() {
+        let v = v.rem_vartime(n);
+        *r == v
+    } else {
+        false
     }
 }

@@ -122,6 +122,7 @@ fn set_8() {
     set_8_problem_58();
     set_8_problem_59();
     set_8_problem_60();
+    set_8_problem_61();
 }
 
 fn set_1_problem_1() {
@@ -1774,5 +1775,42 @@ fn set_8_problem_60() {
     let base_point = MontgomeryCurvePoint::new(bigint(4), &curve);
 
     assert!(base_point.ladder(&order).u == bigint(0));
+
+    let bad_u = bigint_hex("39a0b6ba9eaba7419813d1587a935a24");
+    let bad_point = MontgomeryCurvePoint::new(bad_u, &curve);
+    assert!(bad_point.ladder(&bigint(11)).u == bigint(0));
+
     println!("set 8 problem 60: ok");
+}
+
+fn set_8_problem_61() {
+    let p = bigint_hex("B005107C61647006804A0C2979DF3E8D");
+    let p = OddUint::new(p).unwrap();
+    let a = bigint_hex("B005107C61647006804A0C2979DDCB42");
+    let b = bigint(11279326);
+
+    let g_x = bigint(182);
+    let g_y = bigint_hex("405656FE09D8D8EE91D63369521882A3");
+
+    let order = bigint_hex("1600A20F8C2C8E00A3F1911303382D1F");
+    let order_nz = NonZero::new(order).unwrap();
+
+    let curve = EllipticCurve::new(a, b, p);
+    let base_point = Point::Point { x: g_x, y: g_y };
+    let base_point = EllipticCurvePoint::new(base_point, &curve);
+
+    let d = random_biguint(&order_nz);
+    let q = base_point.mul(&d);
+    let message = b"YELLOW SUBMARINE";
+
+    let signature = ecdsa_sign(&d, &order_nz, &base_point, message);
+    assert!(ecdsa_verify(
+        &q,
+        &signature,
+        &order_nz,
+        &base_point,
+        message
+    ));
+
+    println!("set 8 problem 61: ok");
 }
