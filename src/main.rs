@@ -1812,5 +1812,24 @@ fn set_8_problem_61() {
         message
     ));
 
+    let (r, s) = signature;
+    let d_prime = random_biguint(&order_nz);
+
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+
+    let w = modinv(&s, &order_nz).unwrap();
+    let u1 = hash.mul_mod(&w, &order_nz);
+    let u2 = r.mul_mod(&w, &order_nz);
+    let t = u2.mul_mod(&d_prime, &order_nz).add_mod(&u1, &order_nz);
+    let t_inv = modinv(&t, &order_nz).unwrap();
+    let big_r = base_point.mul(&u1).add(&q.mul(&u2));
+    let g_prime = big_r.mul(&t_inv);
+    let q_prime = g_prime.mul(&d_prime);
+
+    assert!(ecdsa_verify(
+        &q_prime, &signature, &order_nz, &g_prime, message
+    ));
+
     println!("set 8 problem 61: ok");
 }
