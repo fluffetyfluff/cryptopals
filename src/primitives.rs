@@ -1,3 +1,5 @@
+use std::ops::{Add, Mul};
+
 use aes::{
     Aes128,
     cipher::{Array, BlockCipherDecrypt, BlockCipherEncrypt, KeyInit},
@@ -8,6 +10,7 @@ use crypto_bigint::{
     modular::{FixedMontyForm, FixedMontyParams},
 };
 use crypto_primes::{Flavor, random_prime};
+use crypto_ratio::RatioU2048;
 use rand::rng;
 use rc4::{Rc4, StreamCipher};
 
@@ -975,5 +978,74 @@ pub fn ecdsa_verify(
         *r == v
     } else {
         false
+    }
+}
+
+pub struct RatioVec(Vec<RatioU2048>);
+
+impl Add for RatioVec {
+    type Output = RatioVec;
+
+    fn add(self, rhs: RatioVec) -> Self::Output {
+        assert!(self.len() == rhs.len());
+
+        let sum: Vec<RatioU2048> = self
+            .0
+            .iter()
+            .zip(rhs.0.iter())
+            .map(|(a, b)| a + b)
+            .collect();
+
+        Self(sum)
+    }
+}
+
+impl Mul<RatioVec> for RatioVec {
+    type Output = RatioU2048;
+
+    fn mul(self, rhs: RatioVec) -> Self::Output {
+        assert!(self.0.len() == rhs.len());
+
+        let sum = self
+            .0
+            .iter()
+            .zip(rhs.0.iter())
+            .map(|(a, b)| a * b)
+            .fold(RatioU2048::zero(), |acc, e| acc + e);
+
+        sum
+    }
+}
+
+impl Mul<RatioU2048> for RatioVec {
+    type Output = RatioVec;
+
+    fn mul(self, rhs: RatioU2048) -> Self::Output {
+        let sum: Vec<RatioU2048> = self.0.iter().map(|x| x * &rhs).collect();
+
+        Self(sum)
+    }
+}
+
+impl RatioVec {
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(RatioU2048::is_zero)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn new(vec: Vec<RatioU2048>) -> Self {
+        Self(vec)
+    }
+
+    pub fn proj(&self, v: &RatioVec) -> RatioVec {
+        if self.is_zero() {
+            Self::new(vec![RatioU2048::zero(); self.len()])
+        } else {
+            let m = (*self * *v) / (*self * *self);
+            *self * m
+        }
     }
 }
