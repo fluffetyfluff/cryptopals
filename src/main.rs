@@ -2,6 +2,7 @@ use clap::Parser;
 use crypto_bigint::DivVartime;
 use crypto_bigint::{NonZero, OddUint};
 use cryptopals::attacks::*;
+use cryptopals::ecc::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use cryptopals::protocols::*;
