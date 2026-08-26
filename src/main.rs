@@ -6,7 +6,9 @@ use cryptopals::ecc::*;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use cryptopals::protocols::*;
+use cryptopals::ratiovec::*;
 use itertools::iproduct;
+use malachite::Rational;
 use openssl::sha::sha256;
 use rand::random_range;
 use std::cmp;
@@ -124,6 +126,7 @@ fn set_8() {
     set_8_problem_59();
     set_8_problem_60();
     set_8_problem_61();
+    set_8_problem_62();
 }
 
 fn set_1_problem_1() {
@@ -1833,4 +1836,41 @@ fn set_8_problem_61() {
     ));
 
     println!("set 8 problem 61: ok");
+}
+
+fn set_8_problem_62() {
+    let b1 = RatioVec::from(vec![
+        Rational::from(-2),
+        Rational::from(0),
+        Rational::from(2),
+        Rational::from(0),
+    ]);
+
+    let b2 = RatioVec::from(vec![
+        Rational::from_signeds(1, 2),
+        Rational::from(-1),
+        Rational::from(0),
+        Rational::from(0),
+    ]);
+
+    let b3 = RatioVec::from(vec![
+        Rational::from(-1),
+        Rational::from(0),
+        Rational::from(-2),
+        Rational::from_signeds(1, 2),
+    ]);
+
+    let b4 = RatioVec::from(vec![
+        Rational::from(-1),
+        Rational::from(1),
+        Rational::from(1),
+        Rational::from(2),
+    ]);
+
+    let basis = vec![b1, b2, b3, b4];
+
+    println!(
+        "set 8 problem 62: {:?}",
+        lll(&basis, Rational::from_signeds(99, 100))
+    );
 }

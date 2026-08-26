@@ -1,5 +1,8 @@
-use malachite::Rational;
+use malachite::Integer;
+use malachite::base::num::arithmetic::traits::Abs;
 use malachite::base::num::basic::traits::Zero;
+use malachite::{Rational, base::num::conversion::traits::RoundingInto};
+use std::cmp::max;
 use std::ops::{Add, Deref, Mul, Sub};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -233,4 +236,39 @@ pub fn gram_schmidt(basis: &[RatioVec]) -> Vec<RatioVec> {
     }
 
     q
+}
+
+fn round_rational(r: &Rational) -> Rational {
+    let nearest: Integer = r
+        .rounding_into(malachite::base::rounding_modes::RoundingMode::Nearest)
+        .0;
+    Rational::from(nearest)
+}
+
+pub fn lll(basis: &[RatioVec], delta: Rational) -> Vec<RatioVec> {
+    let mut b = Vec::new();
+    b.extend_from_slice(basis);
+    let mut q = gram_schmidt(basis);
+
+    let mut k = 1;
+    while k < b.len() {
+        for j in (0..k).rev() {
+            let m = (&b[k] * &q[j]) / (&q[j] * &q[j]);
+            if (&m).abs() > Rational::from_signeds(1, 2) {
+                b[k] = &b[k] - &b[j] * round_rational(&m);
+                q = gram_schmidt(&b);
+            }
+        }
+
+        let m = (&b[k] * &q[k - 1]) / (&q[k - 1] * &q[k - 1]);
+        if &q[k] * &q[k] >= (&delta - (&m * &m)) * (&q[k - 1] * &q[k - 1]) {
+            k = k + 1
+        } else {
+            b.swap(k, k - 1);
+            q = gram_schmidt(&b);
+            k = max(k - 1, 1);
+        }
+    }
+
+    b
 }
