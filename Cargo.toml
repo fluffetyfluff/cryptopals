@@ -9,11 +9,11 @@ base64 = "0.22.1"
 clap = { version = "4.6.1", features = ["derive"] }
 crypto-bigint = "0.7.3"
 crypto-primes = "0.7.2"
-crypto-ratio = "0.2.2"
 flate2 = "1.1.9"
 hex = "0.4.3"
 hmac = "0.13.0"
 itertools = "0.14.0"
+malachite = "0.10.0"
 openssl = "0.10.76"
 phf = { version = "0.13.1", features = ["macros"] }
 rand = { version = "0.10.1", features = ["alloc"] }

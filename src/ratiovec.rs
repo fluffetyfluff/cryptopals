@@ -1,20 +1,34 @@
-use crypto_ratio::RatioU2048;
-use std::ops::{Add, Mul};
+use malachite::Rational;
+use malachite::base::num::basic::traits::Zero;
+use std::ops::{Add, Deref, Mul, Sub};
 
-pub struct RatioVec(Vec<RatioU2048>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RatioVec(Box<[Rational]>);
+
+// ==========================================
+// 1. Deref Implementation (Provides .len(), indexing, etc.)
+// ==========================================
+
+impl Deref for RatioVec {
+    type Target = [Rational];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// ==========================================
+// 2. Vector Addition: RatioVec + RatioVec
+// ==========================================
 
 impl<'a, 'b> Add<&'b RatioVec> for &'a RatioVec {
     type Output = RatioVec;
 
     fn add(self, rhs: &'b RatioVec) -> Self::Output {
-        assert!(self.len() == rhs.len());
+        assert_eq!(self.len(), rhs.len());
 
-        let sum: Vec<RatioU2048> = self
-            .0
-            .iter()
-            .zip(rhs.0.iter())
-            .map(|(a, b)| a + b)
-            .collect();
+        let sum: Box<[Rational]> = self.iter().zip(rhs.iter()).map(|(a, b)| a + b).collect();
 
         RatioVec(sum)
     }
@@ -24,7 +38,7 @@ impl<'a> Add<&'a RatioVec> for RatioVec {
     type Output = RatioVec;
     #[inline]
     fn add(self, rhs: &'a RatioVec) -> Self::Output {
-        (&self).add(rhs)
+        &self + rhs
     }
 }
 
@@ -32,7 +46,7 @@ impl<'a> Add<RatioVec> for &'a RatioVec {
     type Output = RatioVec;
     #[inline]
     fn add(self, rhs: RatioVec) -> Self::Output {
-        self.add(&rhs)
+        self + &rhs
     }
 }
 
@@ -40,104 +54,183 @@ impl Add<RatioVec> for RatioVec {
     type Output = RatioVec;
     #[inline]
     fn add(self, rhs: RatioVec) -> Self::Output {
-        (&self).add(&rhs)
+        &self + &rhs
     }
 }
 
+// ==========================================
+// 3. Vector Subtraction: RatioVec - RatioVec
+// ==========================================
+
+impl<'a, 'b> Sub<&'b RatioVec> for &'a RatioVec {
+    type Output = RatioVec;
+
+    fn sub(self, rhs: &'b RatioVec) -> Self::Output {
+        assert_eq!(self.len(), rhs.len());
+
+        let diff: Box<[Rational]> = self.iter().zip(rhs.iter()).map(|(a, b)| a - b).collect();
+
+        RatioVec(diff)
+    }
+}
+
+impl<'a> Sub<&'a RatioVec> for RatioVec {
+    type Output = RatioVec;
+    #[inline]
+    fn sub(self, rhs: &'a RatioVec) -> Self::Output {
+        &self - rhs
+    }
+}
+
+impl<'a> Sub<RatioVec> for &'a RatioVec {
+    type Output = RatioVec;
+    #[inline]
+    fn sub(self, rhs: RatioVec) -> Self::Output {
+        self - &rhs
+    }
+}
+
+impl Sub<RatioVec> for RatioVec {
+    type Output = RatioVec;
+    #[inline]
+    fn sub(self, rhs: RatioVec) -> Self::Output {
+        &self - &rhs
+    }
+}
+
+// ==========================================
+// 4. Vector Dot Product: RatioVec * RatioVec
+// ==========================================
+
 impl<'a, 'b> Mul<&'b RatioVec> for &'a RatioVec {
-    type Output = RatioU2048;
+    type Output = Rational;
 
     fn mul(self, rhs: &'b RatioVec) -> Self::Output {
-        assert!(self.len() == rhs.len());
+        assert_eq!(self.len(), rhs.len());
 
-        let sum = self
-            .0
-            .iter()
-            .zip(rhs.0.iter())
+        self.iter()
+            .zip(rhs.iter())
             .map(|(a, b)| a * b)
-            .fold(RatioU2048::zero(), |acc, e| acc + e);
-
-        sum
+            .fold(Rational::ZERO, |acc, e| acc + e)
     }
 }
 
 impl<'a> Mul<&'a RatioVec> for RatioVec {
-    type Output = RatioU2048;
+    type Output = Rational;
     #[inline]
     fn mul(self, rhs: &'a RatioVec) -> Self::Output {
-        (&self).mul(rhs)
+        &self * rhs
     }
 }
 
 impl<'a> Mul<RatioVec> for &'a RatioVec {
-    type Output = RatioU2048;
+    type Output = Rational;
     #[inline]
     fn mul(self, rhs: RatioVec) -> Self::Output {
-        self.mul(&rhs)
+        self * &rhs
     }
 }
 
 impl Mul<RatioVec> for RatioVec {
-    type Output = RatioU2048;
+    type Output = Rational;
     #[inline]
     fn mul(self, rhs: RatioVec) -> Self::Output {
-        (&self).mul(&rhs)
+        &self * &rhs
     }
 }
 
-impl<'a, 'b> Mul<&'b RatioU2048> for &'a RatioVec {
+// ==========================================
+// 5. Scalar Multiplication: RatioVec * Rational
+// ==========================================
+
+impl<'a, 'b> Mul<&'b Rational> for &'a RatioVec {
     type Output = RatioVec;
 
-    fn mul(self, rhs: &'b RatioU2048) -> Self::Output {
-        let sum: Vec<RatioU2048> = self.0.iter().map(|x| x * &rhs).collect();
-
+    fn mul(self, rhs: &'b Rational) -> Self::Output {
+        let sum: Box<[Rational]> = self.iter().map(|x| x * rhs).collect();
         RatioVec(sum)
     }
 }
 
-impl<'a> Mul<&'a RatioU2048> for RatioVec {
+impl<'a> Mul<&'a Rational> for RatioVec {
     type Output = RatioVec;
     #[inline]
-    fn mul(self, rhs: &'a RatioU2048) -> Self::Output {
-        (&self).mul(rhs)
+    fn mul(self, rhs: &'a Rational) -> Self::Output {
+        &self * rhs
     }
 }
 
-impl<'a> Mul<RatioU2048> for &'a RatioVec {
+impl<'a> Mul<Rational> for &'a RatioVec {
     type Output = RatioVec;
     #[inline]
-    fn mul(self, rhs: RatioU2048) -> Self::Output {
-        self.mul(&rhs)
+    fn mul(self, rhs: Rational) -> Self::Output {
+        self * &rhs
     }
 }
 
-impl Mul<RatioU2048> for RatioVec {
+impl Mul<Rational> for RatioVec {
     type Output = RatioVec;
     #[inline]
-    fn mul(self, rhs: RatioU2048) -> Self::Output {
-        (&self).mul(&rhs)
+    fn mul(self, rhs: Rational) -> Self::Output {
+        &self * &rhs
     }
 }
+
+// ==========================================
+// 6. Constructors and Idiomatic Conversion Traits
+// ==========================================
 
 impl RatioVec {
     pub fn is_zero(&self) -> bool {
-        self.0.iter().all(RatioU2048::is_zero)
+        self.iter().all(|x| *x == Rational::ZERO)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
+    pub fn new(slice: Box<[Rational]>) -> Self {
+        Self(slice)
     }
 
-    pub fn new(vec: Vec<RatioU2048>) -> Self {
-        Self(vec)
+    pub fn new_zero(len: usize) -> Self {
+        Self(vec![Rational::ZERO; len].into_boxed_slice())
     }
 
     pub fn proj(&self, v: &RatioVec) -> RatioVec {
         if self.is_zero() {
-            Self::new(vec![RatioU2048::zero(); self.len()])
+            Self::new_zero(self.len())
         } else {
             let m = (self * v) / (self * self);
             self * m
         }
     }
+}
+
+impl From<Vec<Rational>> for RatioVec {
+    fn from(vec: Vec<Rational>) -> Self {
+        Self(vec.into_boxed_slice())
+    }
+}
+
+impl FromIterator<Rational> for RatioVec {
+    fn from_iter<I: IntoIterator<Item = Rational>>(iter: I) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+// ==========================================
+// 7. Algorithms
+// ==========================================
+
+pub fn gram_schmidt(basis: &[RatioVec]) -> Vec<RatioVec> {
+    let mut q: Vec<RatioVec> = Vec::new();
+
+    for v in basis {
+        let proj_sum = q
+            .iter()
+            .map(|u| u.proj(v))
+            .fold(RatioVec::new_zero(v.len()), |acc, e| acc + e);
+
+        let u = v - proj_sum;
+        q.push(u);
+    }
+
+    q
 }
