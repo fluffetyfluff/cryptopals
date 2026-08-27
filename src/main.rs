@@ -1839,38 +1839,28 @@ fn set_8_problem_61() {
 }
 
 fn set_8_problem_62() {
-    let b1 = RatioVec::from(vec![
-        Rational::from(-2),
-        Rational::from(0),
-        Rational::from(2),
-        Rational::from(0),
-    ]);
+    let p = bigint_hex("B005107C61647006804A0C2979DF3E8D");
+    let p = OddUint::new(p).unwrap();
+    let a = bigint_hex("B005107C61647006804A0C2979DDCB42");
+    let b = bigint(11279326);
 
-    let b2 = RatioVec::from(vec![
-        Rational::from_signeds(1, 2),
-        Rational::from(-1),
-        Rational::from(0),
-        Rational::from(0),
-    ]);
+    let g_x = bigint(182);
+    let g_y = bigint_hex("405656FE09D8D8EE91D63369521882A3");
 
-    let b3 = RatioVec::from(vec![
-        Rational::from(-1),
-        Rational::from(0),
-        Rational::from(-2),
-        Rational::from_signeds(1, 2),
-    ]);
+    let order = bigint_hex("1600A20F8C2C8E00A3F1911303382D1F");
+    let order_nz = NonZero::new(order).unwrap();
 
-    let b4 = RatioVec::from(vec![
-        Rational::from(-1),
-        Rational::from(1),
-        Rational::from(1),
-        Rational::from(2),
-    ]);
+    let curve = EllipticCurve::new(a, b, p);
+    let base_point = Point::Point { x: g_x, y: g_y };
+    let base_point = EllipticCurvePoint::new(base_point, &curve);
 
-    let basis = vec![b1, b2, b3, b4];
+    let d = random_biguint(&order_nz);
+    let q = base_point.mul(&d);
+    let message = b"YELLOW SUBMARINE";
+    let n = 20;
 
-    println!(
-        "set 8 problem 62: {:?}",
-        lll(&basis, Rational::from_signeds(99, 100))
-    );
+    for _ in 0..n {}
+
+    let x = bigint(727);
+    println!("set 8 problem 62: ok, {:?}", u2048_to_rational(&x));
 }

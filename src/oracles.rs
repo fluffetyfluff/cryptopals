@@ -250,6 +250,11 @@ pub fn random_biguint(n: &NonZero<U2048>) -> U2048 {
     U2048::random_mod_vartime(&mut rng(), n)
 }
 
+pub fn biased_biguint(n: &NonZero<U2048>) -> U2048 {
+    let random = random_biguint(n);
+    random.shr(8).shl(8)
+}
+
 pub fn nist_prime() -> OddUint<{ U2048::LIMBS }> {
     let p = bigint_hex(
         "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024\

@@ -1,7 +1,8 @@
-use malachite::Integer;
+use crypto_bigint::U2048;
 use malachite::base::num::arithmetic::traits::Abs;
 use malachite::base::num::basic::traits::Zero;
-use malachite::{Rational, base::num::conversion::traits::RoundingInto};
+use malachite::base::num::conversion::traits::RoundingInto;
+use malachite::{Integer, Natural, Rational};
 use std::cmp::max;
 use std::ops::{Add, Deref, Mul, Sub};
 
@@ -215,6 +216,25 @@ impl From<Vec<Rational>> for RatioVec {
 impl FromIterator<Rational> for RatioVec {
     fn from_iter<I: IntoIterator<Item = Rational>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
+    }
+}
+
+pub fn u2048_to_rational(x: &U2048) -> Rational {
+    let natural = Natural::from_limbs_asc(x.as_words());
+
+    Rational::from(natural)
+}
+
+impl From<Vec<U2048>> for RatioVec {
+    fn from(vec: Vec<U2048>) -> Self {
+        let vec: Vec<Rational> = vec.iter().map(|x| u2048_to_rational(x)).collect();
+        Self(vec.into_boxed_slice())
+    }
+}
+
+impl FromIterator<U2048> for RatioVec {
+    fn from_iter<I: IntoIterator<Item = U2048>>(iter: I) -> Self {
+        Self(iter.into_iter().map(|x| u2048_to_rational(&x)).collect())
     }
 }
 

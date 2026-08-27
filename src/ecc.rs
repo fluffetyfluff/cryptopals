@@ -1,4 +1,4 @@
-use crate::oracles::random_biguint;
+use crate::oracles::{biased_biguint, random_biguint};
 use crate::primitives::{bigint, bigint_hex, hex_encode, modexp, modinv, sha_1};
 use crypto_bigint::{NonZero, OddUint, U2048};
 
@@ -322,5 +322,32 @@ pub fn ecdsa_verify(
         *r == v
     } else {
         false
+    }
+}
+
+pub fn ecdsa_biased_sign(
+    d: &U2048,
+    n: &NonZero<U2048>,
+    g: &EllipticCurvePoint,
+    message: &[u8],
+) -> (U2048, U2048) {
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+
+    loop {
+        let k = biased_biguint(n);
+        let r = match g.mul(&k).coord() {
+            Some(r) => r.rem_vartime(n),
+            None => {
+                continue;
+            }
+        };
+
+        let k_1 = modinv(&k, n).unwrap();
+        let hxr = hash.add_mod(&d.mul_mod(&r, n), n);
+        let s = k_1.mul_mod_vartime(&hxr, n);
+        if s != U2048::ZERO {
+            return (r, s);
+        }
     }
 }
