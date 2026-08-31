@@ -4,7 +4,7 @@ use malachite::base::num::basic::traits::Zero;
 use malachite::base::num::conversion::traits::RoundingInto;
 use malachite::{Integer, Natural, Rational};
 use std::cmp::max;
-use std::ops::{Add, Deref, Mul, Sub};
+use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RatioVec(Box<[Rational]>);
@@ -19,6 +19,13 @@ impl Deref for RatioVec {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for RatioVec {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -288,6 +295,7 @@ pub fn lll(basis: &[RatioVec], delta: Rational) -> Vec<RatioVec> {
             q = gram_schmidt(&b);
             k = max(k - 1, 1);
         }
+        println!("lll: {k}");
     }
 
     b

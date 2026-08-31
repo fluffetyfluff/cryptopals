@@ -1,6 +1,6 @@
 use clap::Parser;
 use crypto_bigint::DivVartime;
-use crypto_bigint::{NonZero, OddUint};
+use crypto_bigint::{NonZero, OddUint, U2048};
 use cryptopals::attacks::*;
 use cryptopals::ecc::*;
 use cryptopals::oracles::*;
@@ -1855,12 +1855,56 @@ fn set_8_problem_62() {
     let base_point = EllipticCurvePoint::new(base_point, &curve);
 
     let d = random_biguint(&order_nz);
-    let q = base_point.mul(&d);
     let message = b"YELLOW SUBMARINE";
-    let n = 20;
+    let hash = sha_1(message);
+    let hash = bigint_hex(&hex_encode(&hash));
+    let n = 15;
 
-    for _ in 0..n {}
+    let mut bt: Vec<U2048> = Vec::new();
+    let mut bu: Vec<U2048> = Vec::new();
 
-    let x = bigint(727);
-    println!("set 8 problem 62: ok, {:?}", u2048_to_rational(&x));
+    for _ in 0..n {
+        let (r, s) = ecdsa_biased_sign(&d, &order_nz, &base_point, message);
+        let s_shift = s.shl(8);
+        let s_shift = s_shift.rem(&order_nz);
+        let inv = modinv(&s_shift, &order_nz).unwrap();
+        let minus_inv = bigint(0).sub_mod(&inv, &order_nz);
+
+        let t = r.mul_mod_vartime(&inv, &order_nz);
+        let u = hash.mul_mod_vartime(&minus_inv, &order_nz);
+        bt.push(t);
+        bu.push(u);
+    }
+    bt.push(bigint(0));
+    bt.push(bigint(0));
+    bu.push(bigint(0));
+    bu.push(bigint(0));
+
+    let mut bt = RatioVec::from(bt);
+    let mut bu = RatioVec::from(bu);
+
+    bt[n] = Rational::from_signeds(1, 1 << 8);
+    let q = u2048_to_rational(&order);
+    let sl = u2048_to_rational(&bigint(1 << 8));
+    let cu = q / sl;
+    bu[n + 1] = cu;
+
+    let mut basis: Vec<RatioVec> = Vec::new();
+    basis.push(bt);
+    basis.push(bu);
+    for i in 0..n {
+        let mut basis_vec = RatioVec::new_zero(n + 2);
+        let q = u2048_to_rational(&order);
+        basis_vec[i] = q;
+        basis.push(basis_vec);
+    }
+
+    let d_rational = u2048_to_rational(&d);
+    let multiplier = Rational::const_from_signed(-(1 << 8));
+
+    println!(
+        "set 8 problem 62: ok, {:?}\n{:?}",
+        lll(&basis, Rational::from_signeds(99, 100)),
+        d_rational / multiplier
+    );
 }
