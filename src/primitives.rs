@@ -12,6 +12,7 @@ use rand::rng;
 use rc4::{Rc4, StreamCipher};
 
 use crate::oracles::random_biguint;
+use crate::poly::Polynomial;
 
 pub type Block = [u8; 16];
 pub type Nonce = [u8; 8];
@@ -653,4 +654,34 @@ pub fn rc4_keystream(key: &[u8], n: usize) -> Vec<u8> {
     let mut keystream = vec![0x00; n];
     rc.write_keystream(&mut keystream);
     keystream
+}
+
+pub fn gcm(key: &Block, ad: &[u8], ct: &[u8], nonce: u128) -> Block {
+    let h = aes_128_encrypt(&[0u8; 16], key);
+    let h = Polynomial::from_block(h);
+
+    let ad_blocks = split_blocks(ad);
+    let ct_blocks = split_blocks(ct);
+    let ad_len = (ad.len() as u128) << 3;
+    let ct_len = (ct.len() as u128) << 3;
+
+    let length_block = (ad_len << 64) ^ ct_len;
+
+    let mut g = Polynomial::new(0);
+
+    for block in ad_blocks {
+        g = g + Polynomial::from_block(block);
+        g = g * h;
+    }
+    for block in ct_blocks {
+        g = g + Polynomial::from_block(block);
+        g = g * h;
+    }
+    g = g + Polynomial::new(length_block);
+    g = g * h;
+
+    let s = (nonce << 32) + (1 << 32);
+    let s = aes_128_encrypt(&s.to_be_bytes(), key);
+    let t = g + Polynomial::from_block(s);
+    t.to_block()
 }

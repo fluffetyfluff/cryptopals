@@ -1,5 +1,7 @@
 use std::ops::{Add, Mul};
 
+use crate::primitives::Block;
+
 // less significant bits = lower degree
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Polynomial(u128);
@@ -14,6 +16,33 @@ impl<'a, 'b> Add<&'b Polynomial> for &'a Polynomial {
     }
 }
 
+impl<'a> Add<Polynomial> for &'a Polynomial {
+    type Output = Polynomial;
+
+    #[inline]
+    fn add(self, rhs: Polynomial) -> Self::Output {
+        self.add(&rhs)
+    }
+}
+
+impl<'a> Add<&'a Polynomial> for Polynomial {
+    type Output = Polynomial;
+
+    #[inline]
+    fn add(self, rhs: &'a Polynomial) -> Self::Output {
+        (&self).add(rhs)
+    }
+}
+
+impl Add<Polynomial> for Polynomial {
+    type Output = Polynomial;
+
+    #[inline]
+    fn add(self, rhs: Polynomial) -> Self::Output {
+        (&self).add(&rhs)
+    }
+}
+
 impl<'a, 'b> Mul<&'b Polynomial> for &'a Polynomial {
     type Output = Polynomial;
 
@@ -22,9 +51,44 @@ impl<'a, 'b> Mul<&'b Polynomial> for &'a Polynomial {
     }
 }
 
+impl<'a> Mul<Polynomial> for &'a Polynomial {
+    type Output = Polynomial;
+
+    #[inline]
+    fn mul(self, rhs: Polynomial) -> Self::Output {
+        self.mul(&rhs)
+    }
+}
+
+impl<'a> Mul<&'a Polynomial> for Polynomial {
+    type Output = Polynomial;
+
+    #[inline]
+    fn mul(self, rhs: &'a Polynomial) -> Self::Output {
+        (&self).mul(rhs)
+    }
+}
+
+impl Mul<Polynomial> for Polynomial {
+    type Output = Polynomial;
+
+    #[inline]
+    fn mul(self, rhs: Polynomial) -> Self::Output {
+        (&self).mul(&rhs)
+    }
+}
+
 impl Polynomial {
     pub fn new(val: u128) -> Self {
         Self(val)
+    }
+
+    pub fn from_block(block: Block) -> Self {
+        Self(u128::from_be_bytes(block))
+    }
+
+    pub fn to_block(&self) -> Block {
+        self.0.to_be_bytes()
     }
 
     pub fn div_mod(&self, denom: &Self) -> (Self, Self) {
