@@ -4,82 +4,85 @@ use crate::primitives::Block;
 
 // less significant bits = lower degree
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Polynomial(u128);
+pub struct GF2_128(u128);
 
-const MODULUS: Polynomial = Polynomial(0b10000111);
+const MODULUS: GF2_128 = GF2_128(0b10000111);
 
-impl<'a, 'b> Add<&'b Polynomial> for &'a Polynomial {
-    type Output = Polynomial;
+impl<'a, 'b> Add<&'b GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
 
-    fn add(self, rhs: &'b Polynomial) -> Self::Output {
-        Polynomial(self.0 ^ rhs.0)
+    fn add(self, rhs: &'b GF2_128) -> Self::Output {
+        GF2_128(self.0 ^ rhs.0)
     }
 }
 
-impl<'a> Add<Polynomial> for &'a Polynomial {
-    type Output = Polynomial;
+impl<'a> Add<GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
 
     #[inline]
-    fn add(self, rhs: Polynomial) -> Self::Output {
+    fn add(self, rhs: GF2_128) -> Self::Output {
         self.add(&rhs)
     }
 }
 
-impl<'a> Add<&'a Polynomial> for Polynomial {
-    type Output = Polynomial;
+impl<'a> Add<&'a GF2_128> for GF2_128 {
+    type Output = GF2_128;
 
     #[inline]
-    fn add(self, rhs: &'a Polynomial) -> Self::Output {
+    fn add(self, rhs: &'a GF2_128) -> Self::Output {
         (&self).add(rhs)
     }
 }
 
-impl Add<Polynomial> for Polynomial {
-    type Output = Polynomial;
+impl Add<GF2_128> for GF2_128 {
+    type Output = GF2_128;
 
     #[inline]
-    fn add(self, rhs: Polynomial) -> Self::Output {
+    fn add(self, rhs: GF2_128) -> Self::Output {
         (&self).add(&rhs)
     }
 }
 
-impl<'a, 'b> Mul<&'b Polynomial> for &'a Polynomial {
-    type Output = Polynomial;
+impl<'a, 'b> Mul<&'b GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
 
-    fn mul(self, rhs: &'b Polynomial) -> Self::Output {
+    fn mul(self, rhs: &'b GF2_128) -> Self::Output {
         self.mul_mod(rhs, &MODULUS)
     }
 }
 
-impl<'a> Mul<Polynomial> for &'a Polynomial {
-    type Output = Polynomial;
+impl<'a> Mul<GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
 
     #[inline]
-    fn mul(self, rhs: Polynomial) -> Self::Output {
+    fn mul(self, rhs: GF2_128) -> Self::Output {
         self.mul(&rhs)
     }
 }
 
-impl<'a> Mul<&'a Polynomial> for Polynomial {
-    type Output = Polynomial;
+impl<'a> Mul<&'a GF2_128> for GF2_128 {
+    type Output = GF2_128;
 
     #[inline]
-    fn mul(self, rhs: &'a Polynomial) -> Self::Output {
+    fn mul(self, rhs: &'a GF2_128) -> Self::Output {
         (&self).mul(rhs)
     }
 }
 
-impl Mul<Polynomial> for Polynomial {
-    type Output = Polynomial;
+impl Mul<GF2_128> for GF2_128 {
+    type Output = GF2_128;
 
     #[inline]
-    fn mul(self, rhs: Polynomial) -> Self::Output {
+    fn mul(self, rhs: GF2_128) -> Self::Output {
         (&self).mul(&rhs)
     }
 }
 
-impl Polynomial {
-    pub fn new(val: u128) -> Self {
+impl GF2_128 {
+    pub const ZERO: GF2_128 = GF2_128(0);
+    pub const ONE: GF2_128 = GF2_128(1);
+
+    pub const fn new(val: u128) -> Self {
         Self(val)
     }
 
@@ -113,7 +116,7 @@ impl Polynomial {
     }
 
     // modulus implicitly assumed to be missing the x^128 term
-    pub fn mul_mod(&self, rhs: &Self, modulus: &Self) -> Self {
+    fn mul_mod(&self, rhs: &Self, modulus: &Self) -> Self {
         let mut p: u128 = 0;
         let mut a = self.0;
         let mut b = rhs.0;
@@ -129,5 +132,13 @@ impl Polynomial {
         }
 
         Self(p)
+    }
+
+    pub fn inverse(&self) -> Self {
+        let mut r = Self::new(1);
+        for _ in 0..127 {
+            r = r * r * self;
+        }
+        r * r
     }
 }

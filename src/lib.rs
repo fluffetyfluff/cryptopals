@@ -1,8 +1,9 @@
 pub mod attacks;
 pub mod ecc;
+pub mod gf2_128;
+pub mod gfpoly;
 pub mod language;
 pub mod oracles;
-pub mod poly;
 pub mod primitives;
 pub mod protocols;
 pub mod ratiovec;

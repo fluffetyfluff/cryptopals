@@ -3,6 +3,7 @@ use crypto_bigint::DivVartime;
 use crypto_bigint::{NonZero, OddUint, U2048};
 use cryptopals::attacks::*;
 use cryptopals::ecc::*;
+use cryptopals::gf2_128::GF2_128;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use cryptopals::protocols::*;
@@ -39,6 +40,7 @@ fn main() {
         6 => set_6(),
         7 => set_7(),
         8 => set_8(),
+        9 => testing(),
         _ => (),
     }
 }
@@ -127,6 +129,10 @@ fn set_8() {
     set_8_problem_60();
     set_8_problem_61();
     set_8_problem_62();
+}
+
+fn testing() {
+    set_8_problem_63();
 }
 
 fn set_1_problem_1() {
@@ -1907,4 +1913,10 @@ fn set_8_problem_62() {
         lll(&basis, Rational::from_signeds(99, 100)),
         d_rational / multiplier
     );
+}
+
+fn set_8_problem_63() {
+    let r = GF2_128::from_block(random_block());
+    let inv = r.inverse();
+    println!("set 8 problem 63: {:?} {:?} {:?}", r, inv, r * inv);
 }
