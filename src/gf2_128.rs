@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::primitives::Block;
 
@@ -75,6 +75,93 @@ impl Mul<GF2_128> for GF2_128 {
     #[inline]
     fn mul(self, rhs: GF2_128) -> Self::Output {
         (&self).mul(&rhs)
+    }
+}
+
+impl<'a> Neg for &'a GF2_128 {
+    type Output = GF2_128;
+
+    fn neg(self) -> Self::Output {
+        self.clone()
+    }
+}
+
+impl Neg for GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        (&self).neg()
+    }
+}
+
+impl<'a, 'b> Sub<&'b GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
+
+    fn sub(self, rhs: &'b GF2_128) -> Self::Output {
+        self + (-rhs)
+    }
+}
+
+impl<'a> Sub<GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn sub(self, rhs: GF2_128) -> Self::Output {
+        self.sub(&rhs)
+    }
+}
+
+impl<'a> Sub<&'a GF2_128> for GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn sub(self, rhs: &'a GF2_128) -> Self::Output {
+        (&self).sub(rhs)
+    }
+}
+
+impl Sub<GF2_128> for GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn sub(self, rhs: GF2_128) -> Self::Output {
+        (&self).sub(&rhs)
+    }
+}
+
+impl<'a, 'b> Div<&'b GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
+
+    fn div(self, denom: &'b GF2_128) -> Self::Output {
+        self.mul(denom.inverse())
+    }
+}
+
+impl<'a> Div<GF2_128> for &'a GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn div(self, denom: GF2_128) -> Self::Output {
+        self.div(&denom)
+    }
+}
+
+impl<'a> Div<&'a GF2_128> for GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn div(self, denom: &'a GF2_128) -> Self::Output {
+        (&self).div(denom)
+    }
+}
+
+impl Div<GF2_128> for GF2_128 {
+    type Output = GF2_128;
+
+    #[inline]
+    fn div(self, denom: GF2_128) -> Self::Output {
+        (&self).div(&denom)
     }
 }
 
