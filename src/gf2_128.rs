@@ -98,8 +98,9 @@ impl Neg for GF2_128 {
 impl<'a, 'b> Sub<&'b GF2_128> for &'a GF2_128 {
     type Output = GF2_128;
 
+    // every number is its own inverse in characteristic 2
     fn sub(self, rhs: &'b GF2_128) -> Self::Output {
-        self + (-rhs)
+        self + rhs
     }
 }
 

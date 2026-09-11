@@ -4,6 +4,7 @@ use crypto_bigint::{NonZero, OddUint, U2048};
 use cryptopals::attacks::*;
 use cryptopals::ecc::*;
 use cryptopals::gf2_128::GF2_128;
+use cryptopals::gfpoly::GFPolynomial;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
 use cryptopals::protocols::*;
@@ -1918,5 +1919,23 @@ fn set_8_problem_62() {
 fn set_8_problem_63() {
     let r = GF2_128::from_block(random_block());
     let inv = r.inverse();
-    println!("set 8 problem 63: {:?} {:?} {:?}", r, inv, r * inv);
+    println!("gf2_128 inverse: {:?} {:?} {:?}", r, inv, r * inv);
+
+    let num = GFPolynomial::new(vec![GF2_128::ONE, GF2_128::ZERO, GF2_128::ONE]);
+    let denom = GFPolynomial::new(vec![GF2_128::ONE, GF2_128::ONE]);
+    println!(
+        "poly div: {:?} {:?} {:?} {:?}",
+        num,
+        denom,
+        num.div(&denom),
+        num.div(&num)
+    );
+
+    let p = GFPolynomial::new(vec![
+        GF2_128::ZERO,
+        GF2_128::ONE,
+        GF2_128::ONE,
+        GF2_128::ONE,
+    ]);
+    println!("poly deriv: {:?} {:?}", p, p.derivative());
 }

@@ -83,4 +83,73 @@ impl GFPolynomial {
 
         (quot, rem)
     }
+
+    pub fn gcd(a: &GFPolynomial, b: &GFPolynomial) -> GFPolynomial {
+        let mut a = a.clone();
+        let mut b = b.clone();
+        while b.degree() >= 0 {
+            let t = b.clone();
+            (_, b) = a.div(&b);
+            a = t;
+        }
+        a
+    }
+
+    pub fn monicize(&self) -> Self {
+        assert!(self.degree() >= 0);
+        self.scalar_mul(&self.leading_coefficient().inverse())
+    }
+
+    pub fn derivative(&self) -> Self {
+        if self.degree() <= 0 {
+            GFPolynomial::ZERO
+        } else {
+            let mut ans = Vec::new();
+            for i in 1..=self.degree() as usize {
+                if i % 2 == 1 {
+                    ans.push(self.0[i]);
+                } else {
+                    ans.push(GF2_128::ZERO);
+                }
+            }
+            Self::new(ans)
+        }
+    }
+
+    fn sqrt(&self) -> Self {
+        let mut coeffs = Vec::new();
+        for i in (0..=self.degree() as usize).step_by(2) {
+            coeffs.push(self.0[i]);
+        }
+        Self::new(coeffs)
+    }
+
+    fn sff(&self) -> Vec<(GFPolynomial, u32)> {
+        let mut r: Vec<(GFPolynomial, u32)> = Vec::new();
+
+        let mut c = GFPolynomial::gcd(self, &self.derivative());
+        let (mut w, _) = self.div(&c);
+
+        let mut i = 1;
+        while w.degree() > 0 {
+            let y = GFPolynomial::gcd(&w, &c);
+            let (factor, _) = w.div(&y);
+            r.push((factor, i));
+            (c, _) = c.div(&y);
+            w = y;
+            i = i + 1;
+        }
+
+        if c.degree() > 0 {
+            for (factor, exponent) in c.sqrt().sff() {
+                if let Some(entry) = r.iter_mut().find(|(f, _)| *f == factor) {
+                    entry.1 += exponent * 2;
+                } else {
+                    r.push((factor, exponent * 2));
+                }
+            }
+        }
+
+        r
+    }
 }
