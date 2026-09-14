@@ -19,6 +19,10 @@ impl GFPolynomial {
         Self::new(vec![c])
     }
 
+    pub fn x() -> Self {
+        Self::new(vec![GF2_128::ZERO, GF2_128::ONE])
+    }
+
     pub fn degree(&self) -> i32 {
         self.0.len() as i32 - 1
     }
@@ -38,11 +42,6 @@ impl GFPolynomial {
             ans.push(shorter[i] + longer[i]);
         }
         ans.extend_from_slice(&longer.0[(shorter.degree() + 1) as usize..]);
-        Self::new(ans)
-    }
-
-    pub fn neg(&self) -> Self {
-        let ans = self.0.iter().map(|x| -x).collect();
         Self::new(ans)
     }
 
@@ -78,7 +77,7 @@ impl GFPolynomial {
             let t = Self::constant(rem.leading_coefficient() / denom.leading_coefficient());
             let t = t.mul_polynomial((rem.degree() - denom.degree()) as usize);
             quot = quot.add(&t);
-            rem = rem.add(&denom.mul(&t.neg()));
+            rem = rem.add(&denom.mul(&t));
         }
 
         (quot, rem)
@@ -151,5 +150,51 @@ impl GFPolynomial {
         }
 
         r
+    }
+
+    fn frobenius(&self, modulus: &Self) -> Self {
+        let mut h = self.div(modulus).1;
+        for _ in 0..128 {
+            h = h.mul(&h).div(modulus).1;
+        }
+        h
+    }
+
+    fn pow_mod(&self, exp: u128, modulus: &Self) -> Self {
+        let mut result = Self::constant(GF2_128::ONE);
+        let (mut base, _) = self.div(modulus);
+        let mut e = exp;
+        while e > 0 {
+            if e & 1 == 1 {
+                (result, _) = result.mul(&base).div(modulus);
+            }
+            (base, _) = base.mul(&base).div(modulus);
+            e >>= 1;
+        }
+        result
+    }
+
+    fn ddf(&self) -> Vec<(GFPolynomial, u32)> {
+        let mut result = Vec::new();
+        let mut f = self.clone();
+        let mut h = GFPolynomial::x();
+        let mut i: u32 = 1;
+
+        while f.degree() > 2 * i as i32 {
+            h = h.frobenius(&f);
+            let x_minus_h = GFPolynomial::x().add(&h);
+            let g = GFPolynomial::gcd(&x_minus_h, &f);
+            if g.degree() > 0 {
+                result.push((g.clone(), i));
+                f = f.div(&g).0;
+                h = h.div(&f).1;
+            }
+            i += 1;
+        }
+        if f.degree() > 0 {
+            let deg = f.degree();
+            result.push((f, deg as u32));
+        }
+        result
     }
 }
