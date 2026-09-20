@@ -1917,25 +1917,10 @@ fn set_8_problem_62() {
 }
 
 fn set_8_problem_63() {
-    let r = GF2_128::from_block(random_block());
-    let inv = r.inverse();
-    println!("gf2_128 inverse: {:?} {:?} {:?}", r, inv, r * inv);
+    let one = GF2_128::ONE;
+    let two = GF2_128::new(2);
+    let three = GF2_128::new(3);
 
-    let num = GFPolynomial::new(vec![GF2_128::ONE, GF2_128::ZERO, GF2_128::ONE]);
-    let denom = GFPolynomial::new(vec![GF2_128::ONE, GF2_128::ONE]);
-    println!(
-        "poly div: {:?} {:?} {:?} {:?}",
-        num,
-        denom,
-        num.div(&denom),
-        num.div(&num)
-    );
-
-    let p = GFPolynomial::new(vec![
-        GF2_128::ZERO,
-        GF2_128::ONE,
-        GF2_128::ONE,
-        GF2_128::ONE,
-    ]);
-    println!("poly deriv: {:?} {:?}", p, p.derivative());
+    let p1 = GFPolynomial::new(vec![two, three, two, three, two, one]);
+    println!("p1 factorization: {:?}\n", p1.factor());
 }

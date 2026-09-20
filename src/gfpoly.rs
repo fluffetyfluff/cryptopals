@@ -1,4 +1,5 @@
 use derive_more::Index;
+use rand::random;
 
 use crate::gf2_128::GF2_128;
 
@@ -21,6 +22,16 @@ impl GFPolynomial {
 
     pub fn x() -> Self {
         Self::new(vec![GF2_128::ZERO, GF2_128::ONE])
+    }
+
+    pub fn random(degree: u32) -> Self {
+        loop {
+            let coefficients: Vec<GF2_128> = (0..=degree).map(|_| GF2_128::new(random())).collect();
+            let polynomial = Self::new(coefficients);
+            if polynomial.degree() >= 0 {
+                return polynomial;
+            }
+        }
     }
 
     pub fn degree(&self) -> i32 {
@@ -91,7 +102,7 @@ impl GFPolynomial {
             (_, b) = a.div(&b);
             a = t;
         }
-        a
+        a.monicize()
     }
 
     pub fn monicize(&self) -> Self {
@@ -118,12 +129,12 @@ impl GFPolynomial {
     fn sqrt(&self) -> Self {
         let mut coeffs = Vec::new();
         for i in (0..=self.degree() as usize).step_by(2) {
-            coeffs.push(self.0[i]);
+            coeffs.push(self.0[i].sqrt());
         }
         Self::new(coeffs)
     }
 
-    fn sff(&self) -> Vec<(GFPolynomial, u32)> {
+    pub fn sff(&self) -> Vec<(GFPolynomial, u32)> {
         let mut r: Vec<(GFPolynomial, u32)> = Vec::new();
 
         let mut c = GFPolynomial::gcd(self, &self.derivative());
@@ -133,7 +144,9 @@ impl GFPolynomial {
         while w.degree() > 0 {
             let y = GFPolynomial::gcd(&w, &c);
             let (factor, _) = w.div(&y);
-            r.push((factor, i));
+            if factor.degree() > 0 {
+                r.push((factor, i));
+            }
             (c, _) = c.div(&y);
             w = y;
             i = i + 1;
@@ -152,7 +165,7 @@ impl GFPolynomial {
         r
     }
 
-    fn frobenius(&self, modulus: &Self) -> Self {
+    pub fn frobenius(&self, modulus: &Self) -> Self {
         let mut h = self.div(modulus).1;
         for _ in 0..128 {
             h = h.mul(&h).div(modulus).1;
@@ -162,26 +175,29 @@ impl GFPolynomial {
 
     fn pow_mod(&self, exp: u128, modulus: &Self) -> Self {
         let mut result = Self::constant(GF2_128::ONE);
-        let (mut base, _) = self.div(modulus);
+        let (_, mut base) = self.div(modulus);
         let mut e = exp;
         while e > 0 {
             if e & 1 == 1 {
-                (result, _) = result.mul(&base).div(modulus);
+                (_, result) = result.mul(&base).div(modulus);
             }
-            (base, _) = base.mul(&base).div(modulus);
+            (_, base) = base.mul(&base).div(modulus);
             e >>= 1;
         }
         result
     }
 
-    fn ddf(&self) -> Vec<(GFPolynomial, u32)> {
+    pub fn ddf(&self) -> Vec<(GFPolynomial, u32)> {
         let mut result = Vec::new();
         let mut f = self.clone();
         let mut h = GFPolynomial::x();
         let mut i: u32 = 1;
 
-        while f.degree() > 2 * i as i32 {
+        while f.degree() >= 2 * i as i32 {
+            println!("old h: {:?}", h);
+            println!("f: {:?}", f);
             h = h.frobenius(&f);
+            println!("new h: {:?}", h);
             let x_minus_h = GFPolynomial::x().add(&h);
             let g = GFPolynomial::gcd(&x_minus_h, &f);
             if g.degree() > 0 {
@@ -194,6 +210,63 @@ impl GFPolynomial {
         if f.degree() > 0 {
             let deg = f.degree();
             result.push((f, deg as u32));
+        }
+        result
+    }
+
+    const K: u128 = u128::MAX / 3;
+
+    fn edf_power(h: &GFPolynomial, d: u32, f: &GFPolynomial) -> GFPolynomial {
+        let h_k = h.pow_mod(Self::K, f);
+        let mut acc = h_k.clone();
+        let mut term = h_k;
+        for _ in 1..d {
+            term = term.frobenius(f);
+            acc = acc.mul(&term).div(f).1;
+        }
+        acc
+    }
+
+    pub fn edf(&self, d: u32) -> Vec<GFPolynomial> {
+        let n = self.degree() as u32;
+        let r = n / d;
+        let mut s: Vec<GFPolynomial> = vec![self.clone()];
+
+        while s.len() < r as usize {
+            let h = Self::random(self.degree() as u32 - 1);
+            let g0 = GFPolynomial::gcd(&h, self);
+            let g = if g0.degree() == 0 {
+                Self::edf_power(&h, d, self).add(&GFPolynomial::constant(GF2_128::ONE))
+            } else {
+                g0
+            };
+            let mut new_s = Vec::new();
+            for u in &s {
+                if u.degree() as u32 == d {
+                    new_s.push(u.clone());
+                    continue;
+                }
+                let gu = GFPolynomial::gcd(&g, u);
+                if gu.degree() > 0 && gu != *u {
+                    new_s.push(gu.clone());
+                    new_s.push(u.div(&gu).0);
+                } else {
+                    new_s.push(u.clone());
+                }
+            }
+            s = new_s;
+        }
+        s
+    }
+
+    pub fn factor(&self) -> Vec<(GFPolynomial, u32)> {
+        let mut result = Vec::new();
+        for (poly, exponent) in self.monicize().sff() {
+            for (group, d) in poly.ddf() {
+                for irreducible in group.edf(d) {
+                    result.push((irreducible, exponent));
+                }
+            }
         }
         result
     }

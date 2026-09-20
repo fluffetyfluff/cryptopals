@@ -229,4 +229,12 @@ impl GF2_128 {
         }
         r * r
     }
+
+    pub fn sqrt(&self) -> Self {
+        let mut r = *self;
+        for _ in 0..127 {
+            r = r * r;
+        }
+        r
+    }
 }
