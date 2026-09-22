@@ -130,6 +130,7 @@ fn set_8() {
     set_8_problem_60();
     set_8_problem_61();
     set_8_problem_62();
+    set_8_problem_63();
 }
 
 fn testing() {
@@ -1917,10 +1918,28 @@ fn set_8_problem_62() {
 }
 
 fn set_8_problem_63() {
-    let one = GF2_128::ONE;
-    let two = GF2_128::new(2);
-    let three = GF2_128::new(3);
+    let plaintext1 = b"aes-gcm repeated nonces 1 more data blah";
+    let plaintext2 = b"aes-gcm repeated nonces 2 more data";
+    let ad1 = b"additional data 1";
+    let ad2 = b"additional data 2";
+    let key = b"YELLOW SUBMARINE";
+    let ciphertext1 = aes_128_ctr_keystream(plaintext1.len(), key, b"nonce 1 ");
+    let ciphertext2 = aes_128_ctr_keystream(plaintext2.len(), key, b"nonce 2 ");
 
-    let p1 = GFPolynomial::new(vec![two, three, two, three, two, one]);
-    println!("p1 factorization: {:?}\n", p1.factor());
+    let tag1 = gcm(key, ad1, &ciphertext1, 1234);
+    let tag2 = gcm(key, ad2, &ciphertext2, 1234);
+
+    let coeffs = gcm_repeated_nonce_polynomial(ad1, &ciphertext1, &tag1, ad2, &ciphertext2, &tag2);
+    let poly = GFPolynomial::new(coeffs);
+
+    println!(
+        "set 8 problem 63: actual key: {:?}",
+        GF2_128::from_block(aes_128_encrypt(&[0; 16], key))
+    );
+    println!("recovered keys:");
+    for (factor, _) in poly.factor() {
+        if factor.degree() == 1 {
+            println!("{:?}", factor[0]);
+        }
+    }
 }

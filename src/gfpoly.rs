@@ -194,10 +194,7 @@ impl GFPolynomial {
         let mut i: u32 = 1;
 
         while f.degree() >= 2 * i as i32 {
-            println!("old h: {:?}", h);
-            println!("f: {:?}", f);
             h = h.frobenius(&f);
-            println!("new h: {:?}", h);
             let x_minus_h = GFPolynomial::x().add(&h);
             let g = GFPolynomial::gcd(&x_minus_h, &f);
             if g.degree() > 0 {

@@ -3,6 +3,7 @@ use crypto_bigint::{NonZero, U2048};
 use std::collections::HashMap;
 use std::iter::zip;
 
+use crate::gf2_128::GF2_128;
 use crate::language::*;
 use crate::oracles::*;
 use crate::primitives::*;
@@ -767,4 +768,48 @@ pub fn kangaroo(
     }
 
     Err(())
+}
+
+fn ghash_blocks(ad: &[u8], ct: &[u8]) -> Vec<GF2_128> {
+    let ad_blocks = split_blocks(ad);
+    let ct_blocks = split_blocks(ct);
+    let ad_len = (ad.len() as u128) << 3;
+    let ct_len = (ct.len() as u128) << 3;
+    let length_block = (ad_len << 64) ^ ct_len;
+
+    let mut xs: Vec<GF2_128> = Vec::new();
+    for b in ad_blocks {
+        xs.push(GF2_128::from_block(b));
+    }
+    for b in ct_blocks {
+        xs.push(GF2_128::from_block(b));
+    }
+    xs.push(GF2_128::new(length_block));
+    xs
+}
+
+pub fn gcm_repeated_nonce_polynomial(
+    ad1: &[u8],
+    ct1: &[u8],
+    tag1: &Block,
+    ad2: &[u8],
+    ct2: &[u8],
+    tag2: &Block,
+) -> Vec<GF2_128> {
+    let xs1 = ghash_blocks(ad1, ct1);
+    let xs2 = ghash_blocks(ad2, ct2);
+
+    let n = xs1.len();
+    let diffs: Vec<GF2_128> = xs1.iter().zip(xs2.iter()).map(|(a, b)| *a + *b).collect();
+
+    let tag_diff = GF2_128::from_block(tag1.clone()) + GF2_128::from_block(tag2.clone());
+
+    let mut coeffs = vec![GF2_128::new(0); n + 2];
+    for (i, diff) in diffs.iter().enumerate() {
+        let power = n - i;
+        coeffs[power] = coeffs[power] + *diff;
+    }
+    coeffs[0] = coeffs[0] + tag_diff;
+
+    coeffs
 }
