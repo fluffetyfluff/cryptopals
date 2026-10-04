@@ -3,7 +3,7 @@ use crypto_bigint::DivVartime;
 use crypto_bigint::{NonZero, OddUint, U2048};
 use cryptopals::attacks::*;
 use cryptopals::ecc::*;
-use cryptopals::gf2_128::GF2_128;
+use cryptopals::gf2_128::{GF2_128, Matrix};
 use cryptopals::gfpoly::GFPolynomial;
 use cryptopals::oracles::*;
 use cryptopals::primitives::*;
@@ -134,7 +134,7 @@ fn set_8() {
 }
 
 fn testing() {
-    set_8_problem_63();
+    set_8_problem_64();
 }
 
 fn set_1_problem_1() {
@@ -1942,4 +1942,10 @@ fn set_8_problem_63() {
             println!("{:?}", factor[0]);
         }
     }
+}
+
+fn set_8_problem_64() {
+    let random_gf = GF2_128::from_block(random_block());
+    assert!(random_gf * random_gf == Matrix::SQUARE_MATRIX * random_gf);
+    println!("set 8 problem 64: ok");
 }

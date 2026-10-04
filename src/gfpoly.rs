@@ -4,6 +4,7 @@ use rand::random;
 use crate::gf2_128::GF2_128;
 
 #[derive(Clone, Debug, PartialEq, Index)]
+#[repr(transparent)]
 pub struct GFPolynomial(Vec<GF2_128>);
 
 impl GFPolynomial {

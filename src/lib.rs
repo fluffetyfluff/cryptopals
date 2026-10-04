@@ -3,6 +3,7 @@ pub mod ecc;
 pub mod gf2_128;
 pub mod gfpoly;
 pub mod language;
+pub mod matrix;
 pub mod oracles;
 pub mod primitives;
 pub mod protocols;

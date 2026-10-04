@@ -1,9 +1,12 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
+use derive_more::Deref;
+
 use crate::primitives::Block;
 
 // less significant bits = lower degree
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(transparent)]
 pub struct GF2_128(u128);
 
 const MODULUS: GF2_128 = GF2_128(0b10000111);
@@ -199,12 +202,12 @@ impl GF2_128 {
     }
 
     #[inline]
-    fn shl_carry(i: u128) -> (u128, bool) {
+    const fn shl_carry(i: u128) -> (u128, bool) {
         (i << 1, i & (1u128 << 127) != 0)
     }
 
     // modulus implicitly assumed to be missing the x^128 term
-    fn mul_mod(&self, rhs: &Self, modulus: &Self) -> Self {
+    pub const fn mul_mod(&self, rhs: &Self, modulus: &Self) -> Self {
         let mut p: u128 = 0;
         let mut a = self.0;
         let mut b = rhs.0;
@@ -236,5 +239,71 @@ impl GF2_128 {
             r = r * r;
         }
         r
+    }
+
+    pub fn get_bit(&self, index: usize) -> bool {
+        self.0 & (1 << index) != 0
+    }
+}
+
+// each element is one column, stored left to right
+#[derive(Debug, Deref, Copy, Clone)]
+pub struct Matrix([GF2_128; 128]);
+
+impl<'a, 'b> Mul<&'b GF2_128> for &'a Matrix {
+    type Output = GF2_128;
+
+    fn mul(self, rhs: &GF2_128) -> Self::Output {
+        let mut ans = GF2_128::ZERO;
+        for i in 0..128 {
+            if rhs.get_bit(i) {
+                ans = ans + self[i];
+            }
+        }
+        ans
+    }
+}
+
+impl<'a> Mul<GF2_128> for &'a Matrix {
+    type Output = GF2_128;
+
+    #[inline]
+    fn mul(self, rhs: GF2_128) -> Self::Output {
+        self.mul(&rhs)
+    }
+}
+
+impl<'a> Mul<&'a GF2_128> for Matrix {
+    type Output = GF2_128;
+
+    #[inline]
+    fn mul(self, rhs: &'a GF2_128) -> Self::Output {
+        (&self).mul(rhs)
+    }
+}
+
+impl Mul<GF2_128> for Matrix {
+    type Output = GF2_128;
+
+    #[inline]
+    fn mul(self, rhs: GF2_128) -> Self::Output {
+        (&self).mul(&rhs)
+    }
+}
+
+impl Matrix {
+    pub const SQUARE_MATRIX: Self = {
+        let mut square_matrix = [GF2_128::ZERO; 128];
+        let mut i = 0;
+        while i < 128 {
+            let basis_vec = GF2_128::new(1 << i);
+            square_matrix[i] = basis_vec.mul_mod(&basis_vec, &MODULUS);
+            i += 1;
+        }
+        Self::new(square_matrix)
+    };
+
+    pub const fn new(input: [GF2_128; 128]) -> Self {
+        Self(input)
     }
 }
